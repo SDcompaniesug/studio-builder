@@ -121,6 +121,17 @@ jobs:
               project.plugins.withId('com.android.application') {
                 project.dependencies.add('implementation', 'androidx.appcompat:appcompat:1.7.0')
                 project.dependencies.add('implementation', 'androidx.core:core:1.15.0')
+                project.configurations.configureEach { configuration ->
+                  if (configuration.name.toLowerCase().contains('runtimeclasspath')) {
+                    configuration.resolutionStrategy.eachDependency { details ->
+                      if (details.requested.group == 'org.jetbrains.kotlin' &&
+                          details.requested.name in ['kotlin-stdlib-jdk7', 'kotlin-stdlib-jdk8']) {
+                        details.useTarget('org.jetbrains.kotlin:kotlin-stdlib:1.8.22')
+                        details.because('Use unified Kotlin stdlib to prevent duplicate JDK7/JDK8 classes')
+                      }
+                    }
+                  }
+                }
               }
             }
           }
