@@ -1,8 +1,6 @@
 import { Pool } from "pg";
-import { attachDatabasePool } from "@neon/functions";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
-attachDatabasePool(pool);
 
 const OWNER = "SDcompaniesug";
 const REPO = "studio-builder";
