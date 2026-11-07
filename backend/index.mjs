@@ -51,7 +51,7 @@ async function github(path, options = {}) {
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const path = url.pathname.replace(/\\/$/, "") || "/";
+    const path = url.pathname.replace(/\/$/, "") || "/";
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
     try {
       if (request.method === "GET" && path === "/") {
