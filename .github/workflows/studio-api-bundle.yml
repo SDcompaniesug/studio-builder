@@ -5,13 +5,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: neon-function-bundle
   cancel-in-progress: true
-  actions: read
 jobs:
   bundle:
-    if: ${{ !contains(github.event.head_commit.message, 'Add generated Neon bundle') }}
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'Add generated Neon bundle') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
