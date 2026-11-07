@@ -69,7 +69,7 @@ export default {
         const { name, packageName, description = "", technology = "Java + XML",
           minSdk = 24, targetSdk = 35, buildType = "Debug", files } = data;
         if (!name || !packageName || !description) return fail("name, packageName and description are required.");
-        if (!/^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(packageName)) return fail("Invalid Android package name.");
+        if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(packageName)) return fail("Invalid Android package name.");
         if (!validFiles(files)) return fail("Generated source files are missing or invalid.");
         const { rows } = await pool.query(
           `INSERT INTO studio_projects (name, package_name, description, technology, min_sdk, target_sdk, build_type, files)
