@@ -1290,7 +1290,7 @@ async function createProject(){
  finally{btn.disabled=false;btn.textContent="✦ Create Project";}
 }
 async function loadStudioProjects(){
- try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:"Source saved",date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
+ try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:p.latest_build_status||"Source saved",buildId:p.latest_build_id,latest_build_id:p.latest_build_id,latest_build_status:p.latest_build_status,date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
  catch(e){addLog("Neon project list unavailable: "+e.message,"log-error");}
 }
 async function downloadProject(id){
@@ -1305,8 +1305,12 @@ async function buildProject(id,kind="debug"){
   addLog("Build is still running. Check Build Logs again.");
  }catch(e){addLog("Build request failed: "+e.message,"log-error");alert("Build could not start: "+e.message);}
 }
-async function downloadApk(projectId){
- alert("Open the successful build's GitHub Actions run to download the APK artifact. The direct APK download endpoint is being completed.");
+async function downloadApk(buildId){
+ try{
+  const r=await fetch(STUDIO_API_BASE+"/builds/"+buildId+"/download");
+  if(!r.ok){const t=await r.text();let d={};try{d=JSON.parse(t)}catch{}throw new Error(d.error||"APK is not ready.");}
+  const blob=await r.blob(),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="studio-apk.zip";a.click();URL.revokeObjectURL(u);
+ }catch(e){alert("APK download failed: "+e.message);}
 }
 function render(){
  $("totalProjects").textContent=projects.length;$("totalBuilds").textContent="—";$("successfulBuilds").textContent="—";
