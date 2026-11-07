@@ -145,12 +145,29 @@ jobs:
         shell: bash
         run: |
           set +e
+          : > /tmp/build.log
           if [ "$BUILD_TYPE" = "release" ]; then
-            gradle --init-script /tmp/studio-repositories.init.gradle --no-daemon assembleRelease 2>&1 | tee /tmp/build.log
+            gradle --init-script /tmp/studio-repositories.init.gradle --no-daemon assembleRelease > /tmp/build.log 2>&1 &
           else
-            gradle --init-script /tmp/studio-repositories.init.gradle --no-daemon assembleDebug 2>&1 | tee /tmp/build.log
+            gradle --init-script /tmp/studio-repositories.init.gradle --no-daemon assembleDebug > /tmp/build.log 2>&1 &
           fi
-          code=${PIPESTATUS[0]}
+          GRADLE_PID=$!
+          LAST_SIZE=0
+          while kill -0 "$GRADLE_PID" 2>/dev/null; do
+            SIZE=$(wc -c < /tmp/build.log)
+            if [ "$SIZE" -gt "$LAST_SIZE" ]; then
+              tail -c +$((LAST_SIZE + 1)) /tmp/build.log | curl --silent --show-error --max-time 15 -X POST "$API_URL/internal/builds/$BUILD_ID/logs" -H "content-type: text/plain" --data-binary @- >/dev/null || true
+              LAST_SIZE=$SIZE
+            fi
+            sleep 2
+          done
+          wait "$GRADLE_PID"
+          code=$?
+          SIZE=$(wc -c < /tmp/build.log)
+          if [ "$SIZE" -gt "$LAST_SIZE" ]; then
+            tail -c +$((LAST_SIZE + 1)) /tmp/build.log | curl --silent --show-error --max-time 15 -X POST "$API_URL/internal/builds/$BUILD_ID/logs" -H "content-type: text/plain" --data-binary @- >/dev/null || true
+          fi
+          cat /tmp/build.log
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Collect APK
