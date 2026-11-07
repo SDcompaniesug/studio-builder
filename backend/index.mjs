@@ -55,8 +55,15 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
     try {
       if (request.method === "GET" && path === "/") {
-        const { rows } = await pool.query("SELECT now() AS server_time");
-        return json({ service: "Studio Builder API", status: "ok", database: "connected", serverTime: rows[0].server_time });
+        return json({ service: "Studio Builder API", status: "ok", database: process.env.DATABASE_URL ? "configured" : "missing" });
+      }
+      if (request.method === "GET" && path === "/health/db") {
+        try {
+          const { rows } = await pool.query("SELECT now() AS server_time");
+          return json({ status: "ok", database: "connected", serverTime: rows[0].server_time });
+        } catch (error) {
+          return fail("Database connection failed: " + error.message, 503);
+        }
       }
 
       if (request.method === "POST" && path === "/projects") {
