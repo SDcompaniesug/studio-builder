@@ -4,7 +4,8 @@
   "type": "module",
   "dependencies": {
     "@neon/functions": "^0.8.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "fflate": "^0.8.2"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"
