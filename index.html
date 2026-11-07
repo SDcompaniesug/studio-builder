@@ -1305,12 +1305,9 @@ async function buildProject(id,kind="debug"){
   addLog("Build is still running. Check Build Logs again.");
  }catch(e){addLog("Build request failed: "+e.message,"log-error");alert("Build could not start: "+e.message);}
 }
-async function downloadApk(buildId){
- try{
-  const r=await fetch(STUDIO_API_BASE+"/builds/"+buildId+"/download");
-  if(!r.ok){const t=await r.text();let d={};try{d=JSON.parse(t)}catch{}throw new Error(d.error||"APK is not ready.");}
-  const blob=await r.blob(),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="studio-apk.zip";a.click();URL.revokeObjectURL(u);
- }catch(e){alert("APK download failed: "+e.message);}
+function downloadApk(buildId){
+ if(!buildId){alert("Build an APK first.");return;}
+ const a=document.createElement("a");a.href=STUDIO_API_BASE+"/builds/"+buildId+"/download";a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
 }
 function render(){
  $("totalProjects").textContent=projects.length;$("totalBuilds").textContent="—";$("successfulBuilds").textContent="—";
