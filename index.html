@@ -1,0 +1,1270 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f7fb">
+<title>Android Studio Builder</title>
+
+<style>
+:root{
+--bg:#f5f7fb;--surface:#fff;--text:#172033;--muted:#8791a5;
+--line:#e8ecf3;--primary:#356cf6;--primary-light:#edf3ff;
+--green:#16a36a;--red:#e34d59;--shadow:0 5px 22px rgba(27,45,85,.055)
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:245px;background:#fff;border-right:1px solid var(--line);padding:25px 17px;z-index:5;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:12px;padding:0 10px 30px}
+.brand-icon{width:39px;height:39px;border-radius:12px;background:#356cf6;color:white;display:grid;place-items:center;font-size:21px;font-weight:800}
+.brand-name{font-size:17px;font-weight:800;letter-spacing:-.5px}
+.brand-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.nav-label{font-size:10px;font-weight:800;color:#a0a8b8;letter-spacing:1px;padding:12px}
+.nav-btn{border:0;background:transparent;color:#69748a;width:100%;text-align:left;padding:12px;border-radius:10px;margin:3px 0;display:flex;align-items:center;gap:13px;font-size:13px;font-weight:600}
+.nav-btn:hover,.nav-btn.active{background:var(--primary-light);color:var(--primary)}
+.nav-icon{width:20px;text-align:center;font-size:17px}
+.sidebar-bottom{margin-top:auto;border-top:1px solid var(--line);padding:17px 8px 0}
+.status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.main{margin-left:245px;padding:28px 34px 45px;max-width:1500px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+.page-title{font-size:24px;font-weight:800;letter-spacing:-.8px}
+.page-sub{font-size:12px;color:var(--muted);margin-top:6px}
+.avatar{width:36px;height:36px;border-radius:50%;background:#e9efff;color:#356cf6;display:grid;place-items:center;font-weight:800}
+.btn{border:0;border-radius:9px;padding:11px 16px;font-size:12px;font-weight:700}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 10px #356cf629}
+.btn-primary:hover{background:#2459df}
+.btn-light{background:#f1f4f9;color:#58647a}
+.btn-outline{background:#fff;border:1px solid var(--line);color:#536078}
+.btn-danger{background:#fff0f1;color:var(--red)}
+.page{display:none}
+.page.active{display:block}
+.welcome{background:linear-gradient(115deg,#245be8,#5487ff);color:#fff;padding:28px;border-radius:16px;display:flex;justify-content:space-between;align-items:center;gap:20px;overflow:hidden;margin-bottom:22px}
+.welcome h2{font-size:21px;margin:0 0 8px}
+.welcome p{font-size:12px;opacity:.85;margin:0;line-height:1.6}
+.welcome .btn{background:#fff;color:#285ee8;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:23px}
+.stat,.panel,.project-card{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
+.stat{padding:19px}
+.stat-top{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+.stat-value{font-size:25px;font-weight:800;margin-top:13px}
+.stat-icon{width:34px;height:34px;background:var(--primary-light);color:var(--primary);display:grid;place-items:center;border-radius:10px;font-size:17px}
+.panel{padding:21px;margin-bottom:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:10px}
+.panel-title{font-size:14px;font-weight:800}
+.panel-desc{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{min-width:0}
+.field.full{grid-column:1/-1}
+label{display:block;font-size:11px;font-weight:700;color:#59657a;margin-bottom:8px}
+input,textarea,select{width:100%;border:1px solid #e1e6ef;border-radius:9px;padding:12px;background:#fff;color:var(--text);outline:none;font-size:12px}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px #356cf615}
+textarea{resize:vertical;min-height:100px;line-height:1.6}
+.hint{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5}
+.tech-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.tech{border:1px solid var(--line);border-radius:9px;padding:12px 9px;background:white;text-align:center;font-size:11px;font-weight:700;color:#657087}
+.tech.selected{border:1.5px solid var(--primary);background:var(--primary-light);color:var(--primary)}
+.build-options{display:flex;gap:9px;flex-wrap:wrap}
+.build-option{padding:10px 16px;border:1px solid var(--line);border-radius:9px;background:white;font-size:11px;font-weight:700;color:#657087}
+.build-option.selected{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+.actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;flex-wrap:wrap}
+.table{width:100%;border-collapse:collapse}
+.table th{text-align:left;color:var(--muted);font-size:10px;padding:12px 10px;border-bottom:1px solid var(--line)}
+.table td{font-size:11px;padding:14px 10px;border-bottom:1px solid #f0f2f6}
+.table tr:last-child td{border-bottom:0}
+.badge{display:inline-block;border-radius:20px;padding:5px 9px;font-size:9px;font-weight:800}
+.badge-success{background:#e8f8f0;color:#15935e}
+.badge-pending{background:#fff5df;color:#bd8418}
+.badge-error{background:#fff0f1;color:#d84b58}
+.empty{text-align:center;padding:35px 15px;color:var(--muted);font-size:12px}
+.empty-icon{font-size:30px;margin-bottom:10px}
+.table-wrap{overflow-x:auto}
+.project-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.project-card{padding:17px}
+.project-icon{width:39px;height:39px;border-radius:11px;background:#edf3ff;display:grid;place-items:center;color:var(--primary);font-size:19px;margin-bottom:14px}
+.project-card h3{font-size:13px;margin:0 0 6px}
+.project-card p{font-size:10px;color:var(--muted);margin:0 0 13px;word-break:break-all}
+.project-meta{display:flex;justify-content:space-between;align-items:center;gap:5px}
+.settings-layout{display:grid;grid-template-columns:190px 1fr;gap:17px}
+.settings-tabs{display:flex;flex-direction:column;gap:5px}
+.settings-tab{border:0;background:transparent;text-align:left;padding:12px;border-radius:8px;font-size:11px;font-weight:700;color:#68748a}
+.settings-tab.active{background:var(--primary-light);color:var(--primary)}
+.setting-section{display:none}
+.setting-section.active{display:block}
+.key-wrap{display:flex;gap:8px}
+.key-wrap input{flex:1;min-width:0}
+.provider-help{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f5f8ff;padding:14px;border-radius:10px;margin-top:15px}
+.provider-help p{font-size:11px;color:#69758a;line-height:1.5;margin:0}
+.logs{background:#101827;color:#c6d3e5;border-radius:10px;padding:17px;font:11px/1.9 monospace;min-height:220px;overflow:auto;white-space:pre-wrap}
+.log-line{display:block}
+.log-error{color:#ff8791}
+.mobile-nav{display:none}
+.notice{background:#fff8e8;border:1px solid #f4e6bf;color:#85641f;padding:12px;border-radius:9px;font-size:11px;line-height:1.6;margin-top:13px}
+.hidden{display:none!important}
+.model-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.model-status{font-size:10px;color:var(--muted);margin-top:8px}
+.model-status.success{color:var(--green)}
+.model-status.error{color:var(--red)}
+.provider-message{font-size:11px;margin-top:12px;line-height:1.6;overflow-wrap:anywhere}
+.provider-message.success{color:var(--green)}
+.provider-message.error{color:var(--red)}
+@media(max-width:900px){
+.sidebar{display:none}
+.main{margin-left:0;padding:23px 19px 90px}
+.mobile-nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:9px 4px calc(9px + env(safe-area-inset-bottom));z-index:10}
+.mobile-nav .nav-btn{width:auto;flex:1;display:flex;flex-direction:column;gap:4px;padding:6px 2px;font-size:9px;margin:0;text-align:center}
+.nav-icon{font-size:17px}
+.settings-layout{grid-template-columns:1fr}
+.settings-tabs{flex-direction:row;overflow:auto}
+.settings-tab{white-space:nowrap}
+}
+@media(max-width:600px){
+.main{padding:19px 14px 90px}
+.topbar{margin-bottom:22px}
+.page-title{font-size:21px}
+.welcome{padding:22px;align-items:flex-start;flex-direction:column}
+.stats{gap:8px}
+.stat{padding:13px}
+.stat-value{font-size:20px}
+.stat-top{font-size:9px}
+.stat-icon{width:28px;height:28px}
+.form-grid{grid-template-columns:1fr}
+.field.full{grid-column:auto}
+.tech-grid{grid-template-columns:repeat(2,1fr)}
+.project-grid{grid-template-columns:1fr 1fr}
+.table th,.table td{padding:11px 6px;font-size:10px}
+.panel{padding:16px}
+.provider-help{align-items:flex-start;flex-direction:column}
+.model-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-icon">A</div>
+<div>
+<div class="brand-name">Studio Builder</div>
+<div class="brand-sub">ANDROID DEVELOPMENT</div>
+</div>
+</div>
+
+<div class="nav-label">WORKSPACE</div>
+<button class="nav-btn active" data-page="home"><span class="nav-icon">⌂</span>Home</button>
+<button class="nav-btn" data-page="logs"><span class="nav-icon">≡</span>Build Logs</button>
+<button class="nav-btn" data-page="projects"><span class="nav-icon">▣</span>Projects</button>
+
+<div class="nav-label">PREFERENCES</div>
+<button class="nav-btn" data-page="settings"><span class="nav-icon">⚙</span>Settings</button>
+
+<div class="sidebar-bottom">
+<div class="status"><span class="dot"></span> Builder interface ready</div>
+</div>
+</aside>
+
+<main class="main">
+
+<header class="topbar">
+<div>
+<div class="page-title" id="pageTitle">Dashboard</div>
+<div class="page-sub" id="pageSubtitle">Create and manage your Android applications.</div>
+</div>
+<div class="avatar">A</div>
+</header>
+
+<!-- HOME -->
+<section class="page active" id="home">
+
+<div class="welcome">
+<div>
+<h2>Build your next Android app.</h2>
+<p>Describe your idea, configure your project and prepare your Android build.</p>
+</div>
+<button class="btn" onclick="document.getElementById('projectForm').scrollIntoView({behavior:'smooth'})">＋ New project</button>
+</div>
+
+<div class="stats">
+<div class="stat">
+<div class="stat-top">Total projects <span class="stat-icon">▣</span></div>
+<div class="stat-value" id="totalProjects">0</div>
+</div>
+<div class="stat">
+<div class="stat-top">Builds started <span class="stat-icon">⚡</span></div>
+<div class="stat-value" id="totalBuilds">0</div>
+</div>
+<div class="stat">
+<div class="stat-top">Successful builds <span class="stat-icon">✓</span></div>
+<div class="stat-value" id="successfulBuilds">0</div>
+</div>
+</div>
+
+<div class="panel" id="projectForm">
+<div class="panel-head">
+<div>
+<div class="panel-title">Create Android project</div>
+<div class="panel-desc">Configure the application you want to build.</div>
+</div>
+<span class="badge badge-success">NEW PROJECT</span>
+</div>
+
+<div class="form-grid">
+
+<div class="field">
+<label>APPLICATION NAME</label>
+<input id="appName" placeholder="e.g. My Awesome App">
+</div>
+
+<div class="field">
+<label>PACKAGE NAME</label>
+<input id="packageName" placeholder="com.example.myapp">
+</div>
+
+<div class="field full">
+<label>DESCRIBE YOUR APPLICATION</label>
+<textarea id="appDescription" placeholder="Describe the app you want to create, its features, pages, design and functionality..."></textarea>
+<div class="hint">Be detailed. Describe the screens, features and expected behavior.</div>
+</div>
+
+<div class="field full">
+<label>DEVELOPMENT TECHNOLOGY</label>
+<div class="tech-grid" id="techGrid">
+<button class="tech selected" data-tech="Java">Java</button>
+<button class="tech" data-tech="Kotlin">Kotlin</button>
+<button class="tech" data-tech="Java + XML">Java + XML</button>
+<button class="tech" data-tech="Kotlin + XML">Kotlin + XML</button>
+<button class="tech" data-tech="Flutter">Flutter</button>
+<button class="tech" data-tech="React Native">React Native</button>
+<button class="tech" data-tech="WebView">WebView App</button>
+</div>
+</div>
+
+<div class="field">
+<label>MINIMUM SDK</label>
+<select id="minSdk">
+<option value="24">Android 7.0 (API 24)</option>
+<option value="26">Android 8.0 (API 26)</option>
+<option value="28">Android 9.0 (API 28)</option>
+<option value="29">Android 10 (API 29)</option>
+<option value="30">Android 11 (API 30)</option>
+</select>
+</div>
+
+<div class="field">
+<label>TARGET SDK</label>
+<select id="targetSdk">
+<option value="35">Android 15 (API 35)</option>
+<option value="34">Android 14 (API 34)</option>
+<option value="33">Android 13 (API 33)</option>
+<option value="32">Android 12L (API 32)</option>
+</select>
+</div>
+
+<div class="field full">
+<label>BUILD TYPE</label>
+<div class="build-options">
+<button class="build-option selected" data-build="Debug">Debug APK</button>
+<button class="build-option" data-build="Release">Release APK</button>
+<button class="build-option" data-build="Both">Debug + Release</button>
+</div>
+</div>
+
+</div>
+
+<div class="notice">
+Configure your AI provider and GitHub token in Settings before starting a remote build.
+</div>
+
+<div class="actions">
+<button class="btn btn-light" onclick="resetForm()">Reset</button>
+<button class="btn btn-primary" onclick="createProject()">⚡ Create & Build</button>
+</div>
+</div>
+
+<div class="panel">
+<div class="panel-head">
+<div>
+<div class="panel-title">Recent projects</div>
+<div class="panel-desc">Your recently created applications.</div>
+</div>
+<button class="btn btn-light" onclick="showPage('projects')">View all</button>
+</div>
+<div id="recentProjects" class="empty">
+<div class="empty-icon">▣</div>No projects created yet.
+</div>
+</div>
+
+</section>
+
+<!-- LOGS -->
+<section class="page" id="logs">
+<div class="panel">
+<div class="panel-head">
+<div>
+<div class="panel-title">Build console</div>
+<div class="panel-desc">Build output and project activity.</div>
+</div>
+<button class="btn btn-light" onclick="clearLogs()">Clear logs</button>
+</div>
+<div class="logs" id="logConsole">Studio Builder initialized.
+Waiting for a build...</div>
+</div>
+
+<div class="panel">
+<div class="panel-title">Build history</div>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>PROJECT</th><th>TYPE</th><th>STATUS</th><th>DATE</th></tr></thead>
+<tbody id="historyTable"><tr><td colspan="4" class="empty">No builds yet.</td></tr></tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- PROJECTS -->
+<section class="page" id="projects">
+<div class="panel">
+<div class="panel-head">
+<div>
+<div class="panel-title">Your projects</div>
+<div class="panel-desc">Manage your Android applications.</div>
+</div>
+<button class="btn btn-primary" onclick="showPage('home')">＋ New project</button>
+</div>
+<div class="project-grid" id="projectGrid">
+<div class="empty">No projects yet.</div>
+</div>
+</div>
+</section>
+
+<!-- SETTINGS -->
+<section class="page" id="settings">
+
+<div class="settings-layout">
+
+<div class="panel settings-tabs">
+<button class="settings-tab active" data-setting="ai">✦ AI Provider</button>
+<button class="settings-tab" data-setting="github">⌘ GitHub</button>
+<button class="settings-tab" data-setting="general">⚙ General</button>
+</div>
+
+<div>
+
+<!-- AI SETTINGS -->
+<div class="panel setting-section active" id="setting-ai">
+
+<div class="panel-head">
+<div>
+<div class="panel-title">AI provider configuration</div>
+<div class="panel-desc">Connect an AI provider and discover the models available to your API key.</div>
+</div>
+</div>
+
+<div class="field">
+<label>SELECT AI PROVIDER</label>
+<select id="provider" onchange="providerChanged()">
+<option value="gemini">Google Gemini</option>
+<option value="openai">OpenAI</option>
+<option value="groq">Groq</option>
+<option value="openrouter">OpenRouter</option>
+<option value="custom">Custom API</option>
+</select>
+</div>
+
+<div class="field" style="margin-top:18px">
+<label>API KEY</label>
+<div class="key-wrap">
+<input id="apiKey" type="password" placeholder="Enter your API key">
+<button class="btn btn-light" onclick="toggleKey()">Show</button>
+</div>
+</div>
+
+<div class="field hidden" id="customUrlField" style="margin-top:15px">
+<label>CUSTOM API CHAT COMPLETIONS URL</label>
+<input id="customUrl" placeholder="https://your-api.com/v1/chat/completions">
+<div class="hint">Use an OpenAI-compatible API endpoint. The builder will derive its /models endpoint.</div>
+</div>
+
+<!-- MODEL SELECTOR -->
+<div class="field" style="margin-top:20px">
+<label>AI MODEL</label>
+
+<div class="model-row">
+<select id="modelSelect">
+<option value="">Fetch models first</option>
+</select>
+
+<button class="btn btn-outline" id="fetchModelsBtn" onclick="fetchModels()">↻ Fetch Models</button>
+</div>
+
+<div class="model-status" id="modelStatus">
+Select your provider and fetch its available models.
+</div>
+</div>
+
+<div class="provider-help">
+<p>
+<strong>Don't have an API key?</strong><br>
+Choose your provider and get a key from its official website.
+</p>
+<button class="btn btn-outline" onclick="getApiKey()">Get an API key ↗</button>
+</div>
+
+<div class="actions">
+<button class="btn btn-outline" onclick="testProvider()">Test connection</button>
+<button class="btn btn-primary" onclick="saveProvider()">Save settings</button>
+</div>
+
+<div id="providerMessage" class="provider-message"></div>
+
+<div class="notice">
+API keys are stored in browser local storage in this standalone version. For production, use a secure backend to protect your credentials. Some providers may block browser requests through CORS; in that case, use a backend proxy.
+</div>
+
+</div>
+
+<!-- GITHUB SETTINGS -->
+<div class="panel setting-section" id="setting-github">
+
+<div class="panel-head">
+<div>
+<div class="panel-title">GitHub connection</div>
+<div class="panel-desc">Connect your GitHub account using a Personal Access Token.</div>
+</div>
+</div>
+
+<div class="field">
+<label>GITHUB PERSONAL ACCESS TOKEN</label>
+<div class="key-wrap">
+<input id="githubToken" type="password" placeholder="Enter your GitHub token">
+<button class="btn btn-light" onclick="toggleGithubKey()">Show</button>
+</div>
+<div class="hint">
+Your token is used to identify your account, create repositories and manage Android build workflows.
+</div>
+</div>
+
+<div class="provider-help">
+<p>
+<strong>Don't have a GitHub token?</strong><br>
+Create a Personal Access Token in your GitHub account settings.
+</p>
+<button class="btn btn-outline" onclick="window.open('https://github.com/settings/personal-access-tokens/new','_blank','noopener')">
+Get GitHub token ↗
+</button>
+</div>
+
+<div class="notice">
+For automatic repository creation and builds, grant the token the required repository permissions, including repository creation, Contents access and Actions access.
+</div>
+
+<div class="actions">
+<button class="btn btn-outline" onclick="testGithub()">Test connection</button>
+<button class="btn btn-primary" onclick="saveGithub()">Save settings</button>
+</div>
+
+<div id="githubMessage" class="provider-message"></div>
+
+</div>
+
+<!-- GENERAL SETTINGS -->
+<div class="panel setting-section" id="setting-general">
+
+<div class="panel-head">
+<div>
+<div class="panel-title">General settings</div>
+<div class="panel-desc">Manage your local builder preferences.</div>
+</div>
+</div>
+
+<div class="field">
+<label>APPLICATION INTERFACE</label>
+<select disabled><option>Light theme</option></select>
+</div>
+
+<div class="field" style="margin-top:16px">
+<label>PROJECT DATA</label>
+<button class="btn btn-danger" onclick="clearAllData()">Clear local project data</button>
+<div class="hint">This removes saved projects and local settings from this browser.</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</section>
+
+</main>
+
+<nav class="mobile-nav">
+<button class="nav-btn active" data-page="home"><span class="nav-icon">⌂</span>Home</button>
+<button class="nav-btn" data-page="logs"><span class="nav-icon">≡</span>Logs</button>
+<button class="nav-btn" data-page="projects"><span class="nav-icon">▣</span>Projects</button>
+<button class="nav-btn" data-page="settings"><span class="nav-icon">⚙</span>Settings</button>
+</nav>
+
+<script>
+const $=id=>document.getElementById(id);
+
+const providerLinks={
+gemini:"https://aistudio.google.com/app/apikey",
+openai:"https://platform.openai.com/api-keys",
+groq:"https://console.groq.com/keys",
+openrouter:"https://openrouter.ai/settings/keys",
+custom:"https://platform.openai.com/docs"
+};
+
+const providerNames={
+gemini:"Google Gemini",
+openai:"OpenAI",
+groq:"Groq",
+openrouter:"OpenRouter",
+custom:"Custom API"
+};
+
+let projects=JSON.parse(localStorage.getItem("asb_projects")||"[]");
+let selectedTech="Java";
+let selectedBuild="Debug";
+let availableModels=[];
+let modelRequestRunning=false;
+
+function saveProjects(){
+localStorage.setItem("asb_projects",JSON.stringify(projects));
+}
+
+function showPage(name){
+document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+$(name).classList.add("active");
+
+document.querySelectorAll("[data-page]").forEach(b=>{
+b.classList.toggle("active",b.dataset.page===name);
+});
+
+const titles={
+home:["Dashboard","Create and manage your Android applications."],
+logs:["Build Logs","View build output and activity."],
+projects:["Projects","Manage your applications."],
+settings:["Settings","Configure AI and GitHub integrations."]
+};
+
+$("pageTitle").textContent=titles[name][0];
+$("pageSubtitle").textContent=titles[name][1];
+window.scrollTo(0,0);
+}
+
+document.querySelectorAll("[data-page]").forEach(b=>{
+b.addEventListener("click",()=>showPage(b.dataset.page));
+});
+
+document.querySelectorAll(".tech").forEach(b=>{
+b.onclick=()=>{
+document.querySelectorAll(".tech").forEach(x=>x.classList.remove("selected"));
+b.classList.add("selected");
+selectedTech=b.dataset.tech;
+};
+});
+
+document.querySelectorAll(".build-option").forEach(b=>{
+b.onclick=()=>{
+document.querySelectorAll(".build-option").forEach(x=>x.classList.remove("selected"));
+b.classList.add("selected");
+selectedBuild=b.dataset.build;
+};
+});
+
+document.querySelectorAll(".settings-tab").forEach(b=>{
+b.onclick=()=>{
+document.querySelectorAll(".settings-tab").forEach(x=>x.classList.remove("active"));
+document.querySelectorAll(".setting-section").forEach(x=>x.classList.remove("active"));
+b.classList.add("active");
+$("setting-"+b.dataset.setting).classList.add("active");
+};
+});
+
+/* LOGS */
+
+function addLog(message,type=""){
+const consoleBox=$("logConsole");
+const line=document.createElement("span");
+line.className="log-line "+type;
+line.textContent="["+new Date().toLocaleTimeString()+"] "+message;
+consoleBox.appendChild(document.createTextNode("\n"));
+consoleBox.appendChild(line);
+consoleBox.scrollTop=consoleBox.scrollHeight;
+}
+
+function clearLogs(){
+$("logConsole").textContent="Logs cleared.";
+}
+
+/* PROJECTS */
+
+function resetForm(){
+["appName","packageName","appDescription"].forEach(id=>$(id).value="");
+$("minSdk").value="24";
+$("targetSdk").value="35";
+selectedTech="Java";
+selectedBuild="Debug";
+
+document.querySelectorAll(".tech").forEach((b,i)=>{
+b.classList.toggle("selected",i===0);
+});
+
+document.querySelectorAll(".build-option").forEach((b,i)=>{
+b.classList.toggle("selected",i===0);
+});
+}
+
+function createProject(){
+const name=$("appName").value.trim();
+const pkg=$("packageName").value.trim();
+const desc=$("appDescription").value.trim();
+
+if(!name||!pkg||!desc){
+alert("Please enter the app name, package name and description.");
+return;
+}
+
+if(!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(pkg)){
+alert("Enter a valid package name, for example com.example.myapp.");
+return;
+}
+
+const provider=localStorage.getItem("asb_provider")||"";
+const key=localStorage.getItem("asb_apiKey")||"";
+const token=localStorage.getItem("asb_githubToken")||"";
+
+if(!provider||!key){
+alert("Please configure an AI provider and API key in Settings first.");
+showPage("settings");
+return;
+}
+
+if(!token){
+alert("Please configure your GitHub token in Settings first.");
+showPage("settings");
+return;
+}
+
+const project={
+id:Date.now(),
+name,pkg,desc,
+tech:selectedTech,
+build:selectedBuild,
+minSdk:$("minSdk").value,
+targetSdk:$("targetSdk").value,
+status:"Not built",
+date:new Date().toLocaleString()
+};
+
+projects.unshift(project);
+saveProjects();
+render();
+
+addLog("Project created: "+name);
+addLog("Technology: "+selectedTech+" | Build: "+selectedBuild);
+addLog("Project configuration saved locally.");
+addLog("A backend and GitHub Actions workflow are required for a real APK build.","log-error");
+
+alert("Project saved. This HTML prototype does not compile APKs by itself. A backend is required to generate source code and trigger GitHub Actions.");
+
+showPage("logs");
+}
+
+function render(){
+$("totalProjects").textContent=projects.length;
+$("totalBuilds").textContent=projects.filter(p=>p.status!=="Not built").length;
+$("successfulBuilds").textContent=projects.filter(p=>p.status==="Success").length;
+
+const rows=projects.slice(0,5);
+
+$("recentProjects").innerHTML=rows.length?
+rows.map(p=>`
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f0f2f6">
+<div>
+<b style="font-size:12px">${escapeHtml(p.name)}</b>
+<div class="hint">${escapeHtml(p.pkg)}</div>
+</div>
+<span class="badge badge-pending">${escapeHtml(p.status)}</span>
+</div>`).join("")
+:'<div class="empty"><div class="empty-icon">▣</div>No projects created yet.</div>';
+
+$("projectGrid").innerHTML=projects.length?
+projects.map(p=>`
+<div class="project-card">
+<div class="project-icon">▣</div>
+<h3>${escapeHtml(p.name)}</h3>
+<p>${escapeHtml(p.pkg)}</p>
+<div class="project-meta">
+<span class="badge badge-pending">${escapeHtml(p.status)}</span>
+<button class="btn btn-light" onclick="deleteProject(${p.id})">Delete</button>
+</div>
+<div class="hint" style="margin-top:12px">${escapeHtml(p.tech)} · API ${escapeHtml(p.targetSdk)}</div>
+</div>`).join("")
+:'<div class="empty">No projects yet.</div>';
+
+$("historyTable").innerHTML=projects.length?
+projects.map(p=>`
+<tr>
+<td>${escapeHtml(p.name)}</td>
+<td>${escapeHtml(p.build)}</td>
+<td><span class="badge badge-pending">${escapeHtml(p.status)}</span></td>
+<td>${escapeHtml(p.date)}</td>
+</tr>`).join("")
+:'<tr><td colspan="4" class="empty">No builds yet.</td></tr>';
+}
+
+function deleteProject(id){
+if(!confirm("Delete this project?"))return;
+projects=projects.filter(p=>p.id!==id);
+saveProjects();
+render();
+}
+
+function escapeHtml(s){
+return String(s).replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+}
+
+/* PROVIDER SETTINGS */
+
+function providerChanged(){
+const p=$("provider").value;
+
+$("customUrlField").classList.toggle("hidden",p!=="custom");
+
+$("apiKey").placeholder=p==="gemini"?
+"Enter your Gemini API key":
+"Enter your "+providerNames[p]+" API key";
+
+availableModels=[];
+
+$("modelSelect").innerHTML='<option value="">Fetch models first</option>';
+$("modelStatus").textContent="Fetch models for "+providerNames[p]+".";
+$("modelStatus").className="model-status";
+
+$("providerMessage").textContent="";
+$("providerMessage").className="provider-message";
+}
+
+function getApiKey(){
+window.open(providerLinks[$("provider").value],"_blank","noopener");
+}
+
+function toggleKey(){
+const i=$("apiKey");
+i.type=i.type==="password"?"text":"password";
+}
+
+function toggleGithubKey(){
+const i=$("githubToken");
+i.type=i.type==="password"?"text":"password";
+}
+
+function setProviderMessage(message,type=""){
+$("providerMessage").textContent=message;
+$("providerMessage").className="provider-message "+type;
+}
+
+function setModelStatus(message,type=""){
+$("modelStatus").textContent=message;
+$("modelStatus").className="model-status "+type;
+}
+
+/* API ERROR READER */
+
+async function readApiResponse(response){
+const raw=await response.text();
+let data={};
+
+try{
+data=raw?JSON.parse(raw):{};
+}catch(e){
+data={message:raw};
+}
+
+if(!response.ok){
+let message=
+data.error?.message||
+data.message||
+data.detail||
+data.error||
+response.statusText||
+"Unknown API error";
+
+if(typeof message!=="string")message=JSON.stringify(message);
+
+throw new Error("HTTP "+response.status+": "+message);
+}
+
+return data;
+}
+
+/* PROVIDER ENDPOINTS */
+
+function getProviderConfig(){
+const p=$("provider").value;
+const key=$("apiKey").value.trim();
+
+if(!key)throw new Error("Enter your API key first.");
+
+if(p==="gemini"){
+return{
+type:"gemini",
+modelsUrl:"https://generativelanguage.googleapis.com/v1beta/models",
+headers:{"x-goog-api-key":key}
+};
+}
+
+if(p==="openai"){
+return{
+type:"openai",
+modelsUrl:"https://api.openai.com/v1/models",
+chatUrl:"https://api.openai.com/v1/chat/completions",
+headers:{"Authorization":"Bearer "+key}
+};
+}
+
+if(p==="groq"){
+return{
+type:"openai",
+modelsUrl:"https://api.groq.com/openai/v1/models",
+chatUrl:"https://api.groq.com/openai/v1/chat/completions",
+headers:{"Authorization":"Bearer "+key}
+};
+}
+
+if(p==="openrouter"){
+return{
+type:"openai",
+modelsUrl:"https://openrouter.ai/api/v1/models",
+chatUrl:"https://openrouter.ai/api/v1/chat/completions",
+headers:{"Authorization":"Bearer "+key}
+};
+}
+
+if(p==="custom"){
+const customUrl=$("customUrl").value.trim();
+
+if(!customUrl)throw new Error("Enter your custom API URL.");
+
+let parsed;
+
+try{
+parsed=new URL(customUrl);
+}catch(e){
+throw new Error("Invalid custom API URL.");
+}
+
+if(!["https:","http:"].includes(parsed.protocol)){
+throw new Error("Use an HTTP or HTTPS API URL.");
+}
+
+let base=customUrl.replace(/\/+$/,"");
+
+if(base.endsWith("/chat/completions")){
+base=base.slice(0,-"/chat/completions".length);
+}else if(base.endsWith("/completions")){
+base=base.slice(0,-"/completions".length);
+}
+
+return{
+type:"openai",
+modelsUrl:base+"/models",
+chatUrl:customUrl,
+headers:{"Authorization":"Bearer "+key}
+};
+}
+
+throw new Error("Unsupported provider.");
+}
+
+/* FETCH MODELS */
+
+async function fetchProviderModels(){
+const config=getProviderConfig();
+
+let models=[];
+
+if(config.type==="gemini"){
+
+const url=config.modelsUrl+"?pageSize=1000";
+
+const response=await fetch(url,{
+method:"GET",
+headers:config.headers
+});
+
+const data=await readApiResponse(response);
+
+models=(data.models||[])
+.filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent"))
+.map(m=>({
+id:m.name.replace(/^models\//,""),
+name:m.displayName||m.name,
+description:m.description||"Gemini model"
+}));
+
+}else{
+
+const response=await fetch(config.modelsUrl,{
+method:"GET",
+headers:{
+...config.headers,
+"Accept":"application/json"
+}
+});
+
+const data=await readApiResponse(response);
+
+models=(data.data||data.models||[])
+.map(m=>({
+id:m.id||m.name,
+name:m.name||m.id,
+description:m.owned_by||m.description||"Available model"
+}))
+.filter(m=>m.id);
+}
+
+if(!models.length){
+throw new Error("The API returned no usable models. Check your API key and provider permissions.");
+}
+
+return models;
+}
+
+function populateModels(models,preferred=""){
+const select=$("modelSelect");
+
+select.innerHTML="";
+
+models.forEach(model=>{
+const option=document.createElement("option");
+option.value=model.id;
+option.textContent=model.name+(model.description&&model.description!==model.name?" — "+model.description:"");
+select.appendChild(option);
+});
+
+const saved=preferred||localStorage.getItem("asb_model")||"";
+
+if(saved&&models.some(m=>m.id===saved)){
+select.value=saved;
+}else{
+select.selectedIndex=0;
+}
+
+}
+
+/* MANUAL MODEL FETCH */
+
+async function fetchModels(){
+if(modelRequestRunning)return;
+
+const btn=$("fetchModelsBtn");
+
+try{
+modelRequestRunning=true;
+btn.disabled=true;
+btn.textContent="Fetching...";
+
+setModelStatus("Connecting to "+providerNames[$("provider").value]+"...");
+
+const models=await fetchProviderModels();
+
+availableModels=models;
+
+const saved=localStorage.getItem("asb_model")||"";
+populateModels(models,saved);
+
+setModelStatus(
+"Successfully fetched "+models.length+" models.",
+"success"
+);
+
+addLog("Fetched "+models.length+" AI models.");
+
+}catch(error){
+
+setModelStatus(error.message,"error");
+addLog("Model fetch failed: "+error.message,"log-error");
+
+$("modelSelect").innerHTML='<option value="">Unable to fetch models</option>';
+
+}finally{
+modelRequestRunning=false;
+btn.disabled=false;
+btn.textContent="↻ Fetch Models";
+}
+}
+
+/* TEST CONNECTION */
+
+async function testProvider(){
+
+const p=$("provider").value;
+const key=$("apiKey").value.trim();
+
+if(!key){
+setProviderMessage("Enter an API key first.","error");
+return;
+}
+
+try{
+
+setProviderMessage("Fetching available models...");
+
+const models=await fetchProviderModels();
+
+availableModels=models;
+
+const previous=$("modelSelect").value||
+localStorage.getItem("asb_model")||"";
+
+populateModels(models,previous);
+
+setModelStatus("Found "+models.length+" available models.","success");
+
+const model=$("modelSelect").value;
+
+if(!model){
+throw new Error("Select a model before testing.");
+}
+
+setProviderMessage("Testing "+model+"...");
+
+const config=getProviderConfig();
+
+if(config.type==="gemini"){
+
+const url="https://generativelanguage.googleapis.com/v1beta/models/"+
+encodeURIComponent(model)+":generateContent";
+
+const response=await fetch(url,{
+method:"POST",
+headers:{
+...config.headers,
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+contents:[{
+parts:[{text:"Reply with OK"}]
+}],
+generationConfig:{
+maxOutputTokens:20
+}
+})
+});
+
+const data=await readApiResponse(response);
+
+if(!data.candidates?.length){
+throw new Error("The model returned no response. Check model availability and permissions.");
+}
+
+}else{
+
+const response=await fetch(config.chatUrl,{
+method:"POST",
+headers:{
+...config.headers,
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+model:model,
+messages:[{
+role:"user",
+content:"Reply with OK"
+}],
+max_tokens:20
+})
+});
+
+const data=await readApiResponse(response);
+
+if(!data.choices?.length){
+throw new Error("The model returned no chat response.");
+}
+
+}
+
+localStorage.setItem("asb_model",model);
+
+setProviderMessage(
+"✓ Connection successful! "+providerNames[p]+" responded using "+model+".",
+"success"
+);
+
+addLog("AI connection successful: "+providerNames[p]);
+addLog("Selected model: "+model);
+
+}catch(error){
+
+setProviderMessage(
+"Connection failed: "+error.message,
+"error"
+);
+
+addLog("AI connection failed: "+error.message,"log-error");
+
+}
+
+}
+
+/* SAVE AI SETTINGS */
+
+function saveProvider(){
+
+const p=$("provider").value;
+const k=$("apiKey").value.trim();
+const model=$("modelSelect").value;
+
+if(!k){
+setProviderMessage("Please enter an API key.","error");
+return;
+}
+
+if(!model){
+setProviderMessage("Please fetch and select an AI model first.","error");
+return;
+}
+
+localStorage.setItem("asb_provider",p);
+localStorage.setItem("asb_apiKey",k);
+localStorage.setItem("asb_model",model);
+localStorage.setItem("asb_customUrl",$("customUrl").value.trim());
+
+setProviderMessage(
+providerNames[p]+" settings saved successfully. Model: "+model,
+"success"
+);
+
+addLog("AI settings saved: "+providerNames[p]);
+addLog("Selected model: "+model);
+}
+
+/* GITHUB */
+
+function saveGithub(){
+
+const token=$("githubToken").value.trim();
+
+if(!token){
+$("githubMessage").textContent="Please enter your GitHub token.";
+return;
+}
+
+localStorage.setItem("asb_githubToken",token);
+
+$("githubMessage").textContent="GitHub token saved in this browser.";
+$("githubMessage").className="provider-message success";
+}
+
+async function testGithub(){
+
+const token=$("githubToken").value.trim();
+const msg=$("githubMessage");
+
+if(!token){
+msg.textContent="Enter your GitHub token first.";
+msg.className="provider-message error";
+return;
+}
+
+msg.textContent="Testing GitHub connection...";
+msg.className="provider-message";
+
+try{
+
+const response=await fetch("https://api.github.com/user",{
+headers:{
+"Authorization":"Bearer "+token,
+"Accept":"application/vnd.github+json",
+"X-GitHub-Api-Version":"2022-11-28"
+}
+});
+
+const user=await readApiResponse(response);
+
+msg.textContent="✓ Connected successfully as "+user.login+".";
+msg.className="provider-message success";
+
+}catch(error){
+
+msg.textContent="GitHub connection failed: "+error.message;
+msg.className="provider-message error";
+
+}
+
+}
+
+/* LOAD SETTINGS */
+
+async function loadSettings(){
+
+$("provider").value=localStorage.getItem("asb_provider")||"gemini";
+$("apiKey").value=localStorage.getItem("asb_apiKey")||"";
+$("customUrl").value=localStorage.getItem("asb_customUrl")||"";
+$("githubToken").value=localStorage.getItem("asb_githubToken")||"";
+
+providerChanged();
+
+const savedKey=$("apiKey").value;
+
+if(savedKey){
+try{
+
+setModelStatus("Loading saved provider models...");
+
+const models=await fetchProviderModels();
+
+availableModels=models;
+
+populateModels(models,localStorage.getItem("asb_model")||"");
+
+setModelStatus("Loaded "+models.length+" models.","success");
+
+}catch(error){
+
+setModelStatus(
+"Could not load models automatically. Tap Fetch Models to retry. "+error.message,
+"error"
+);
+
+}
+}
+
+}
+
+/* CLEAR DATA */
+
+function clearAllData(){
+
+if(!confirm("Clear all local projects and settings?"))return;
+
+[
+"asb_projects",
+"asb_provider",
+"asb_apiKey",
+"asb_model",
+"asb_customUrl",
+"asb_githubToken"
+].forEach(k=>localStorage.removeItem(k));
+
+projects=[];
+render();
+
+alert("Local data cleared.");
+location.reload();
+}
+
+loadSettings();
+render();
+
+</script>
+</body>
+</html>
