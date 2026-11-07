@@ -37,7 +37,7 @@ With the Neon CLI installed and authenticated, link this project and deploy the 
 
 ```bash
 neon link --project-id dry-fire-13288712
-neon functions deploy studiobuildapi --src backend/index.mjs --env GITHUB_TOKEN=YOUR_TOKEN
+neon functions deploy studiobuildapi --src backend/index.cjs --env GITHUB_TOKEN=YOUR_TOKEN
 ```
 
 Run the deploy command from the repository root after dependencies have been installed in `backend/`:
