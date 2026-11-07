@@ -39,6 +39,9 @@ jobs:
           echo "Database health:"
           curl --silent --show-error --max-time 20 -w "\\nHTTP=%{http_code}\\n" "https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech/health/db" || true
           echo
+          echo "Project list endpoint:"
+          curl --fail --silent --show-error --max-time 20 "https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech/projects" | tee /tmp/projects-health.json
+          node -e "const x=require('/tmp/projects-health.json'); if(!Array.isArray(x.projects)) process.exit(1)"
       - name: Install backend dependencies
         working-directory: backend
         run: npm install --no-audit --no-fund
