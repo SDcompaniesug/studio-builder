@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: neon-function-bundle
+  cancel-in-progress: true
   actions: read
 jobs:
   bundle:
@@ -30,6 +33,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add studiobuildapi.zip.b64
           git commit -m "Add generated Neon bundle"
+          git pull --rebase origin main
           git push
       - uses: actions/upload-artifact@v4
         with:
