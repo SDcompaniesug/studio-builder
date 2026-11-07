@@ -184,6 +184,17 @@ export default {
         return json({ ok: true, build: rows[0] });
       }
 
+      const streamLogsMatch = path.match(/^\/internal\/builds\/([0-9a-f-]{36})\/logs$/i);
+      if (request.method === "POST" && streamLogsMatch) {
+        const chunk = (await request.text()).slice(0, 20000);
+        const { rows } = await pool.query(
+          "UPDATE studio_builds SET logs=RIGHT(COALESCE(logs,'') || $2,50000),updated_at=now() WHERE id=$1 RETURNING id,status",
+          [streamLogsMatch[1], chunk]
+        );
+        if (!rows.length) return fail("Build not found.", 404);
+        return json({ ok: true, build: rows[0] });
+      }
+
       const liveLogsMatch = path.match(/^\/builds\/([0-9a-f-]{36})\/logs$/i);
       if (request.method === "GET" && liveLogsMatch) {
         const { rows } = await pool.query("SELECT id,status,logs,github_run_id FROM studio_builds WHERE id=$1", [liveLogsMatch[1]]);
