@@ -118,8 +118,10 @@ jobs:
           }
           gradle.beforeProject { project ->
             if (project.path == ':app') {
-              project.dependencies.add('implementation', 'androidx.appcompat:appcompat:1.7.0')
-              project.dependencies.add('implementation', 'androidx.core:core:1.15.0')
+              project.plugins.withId('com.android.application') {
+                project.dependencies.add('implementation', 'androidx.appcompat:appcompat:1.7.0')
+                project.dependencies.add('implementation', 'androidx.core:core:1.15.0')
+              }
             }
           }
           GRADLE
