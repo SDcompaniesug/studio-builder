@@ -48,7 +48,7 @@ jobs:
       - name: Bundle Neon Function
         run: |
           mkdir -p dist
-          npx --yes esbuild backend/index.mjs --bundle --platform=node --format=esm --packages=bundle --banner:js='import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' --outfile=dist/index.mjs
+          npx --yes esbuild backend/index.mjs --bundle --platform=node --format=esm --packages=bundle --outfile=dist/index.mjs
           cd dist
           zip -9 ../studiobuildapi.zip index.mjs
       - name: Deploy Neon Function with GitHub integration token
