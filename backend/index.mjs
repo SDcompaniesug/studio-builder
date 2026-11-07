@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { zipSync, unzipSync, strToU8 } from "fflate";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
 
@@ -80,6 +81,11 @@ export default {
         return json({ project: rows[0], fileCount: files.length }, 201);
       }
 
+      if (request.method === "GET" && path === "/downloads") {
+        const { rows } = await pool.query(`SELECT p.id AS project_id,p.name,p.package_name,p.updated_at,b.id AS build_id,b.build_type,b.status AS build_status,b.created_at AS build_created_at FROM studio_projects p LEFT JOIN LATERAL (SELECT id,build_type,status,created_at FROM studio_builds WHERE project_id=p.id ORDER BY created_at DESC LIMIT 1) b ON true ORDER BY p.updated_at DESC LIMIT 200`);
+        return json({ downloads: rows.map(r => ({ ...r, zipUrl: `/projects/${r.project_id}/download`, apkUrl: r.build_status === "succeeded" && r.build_id ? `/builds/${r.build_id}/download` : null })) });
+      }
+
       if (request.method === "GET" && path === "/projects") {
         const { rows } = await pool.query(
           `SELECT p.id,p.name,p.package_name,p.description,p.technology,p.min_sdk,p.target_sdk,p.build_type,p.created_at,p.updated_at,
@@ -89,6 +95,17 @@ export default {
            FROM studio_projects p ORDER BY p.updated_at DESC LIMIT 200`
         );
         return json({ projects: rows });
+      }
+
+      const projectZipMatch = path.match(/^\/projects\/([0-9a-f-]{36})\/download$/i);
+      if (request.method === "GET" && projectZipMatch) {
+        const { rows } = await pool.query("SELECT id,name,files FROM studio_projects WHERE id=$1", [projectZipMatch[1]]);
+        if (!rows.length) return fail("Project not found.", 404);
+        const project = rows[0], entries = {};
+        for (const file of project.files || []) entries[file.path] = strToU8(file.content);
+        const archive = zipSync(entries, { level: 6 });
+        const filename = (project.name || "android-project").replace(/[^a-z0-9_-]/gi, "_") + ".zip";
+        return new Response(archive, { headers: { ...headers, "content-type": "application/zip", "content-length": String(archive.length), "content-disposition": 'attachment; filename="' + filename + '"' } });
       }
 
       const projectMatch = path.match(/^\/projects\/([0-9a-f-]{36})$/i);
@@ -168,15 +185,16 @@ export default {
         const artifacts = await github(`/repos/${OWNER}/${REPO}/actions/runs/${build.github_run_id}/artifacts`);
         const artifact = (artifacts.artifacts || []).find(a => a.name === "studio-apk-" + build.id && !a.expired);
         if (!artifact) return fail("APK artifact was not found. Check the GitHub Actions run.", 404);
-        const token = process.env.GITHUB_TOKEN;
-        const archiveResponse = await fetch(`${GH_API}/repos/${OWNER}/${REPO}/actions/artifacts/${artifact.id}/zip`, {
-          headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
-          redirect: "manual"
+        const response = await fetch(`${GH_API}/repos/${OWNER}/${REPO}/actions/artifacts/${artifact.id}/zip`, {
+          headers: { "Authorization": "Bearer " + process.env.GITHUB_TOKEN, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
         });
-        const location = archiveResponse.headers.get("location");
-        if (archiveResponse.status >= 300 && archiveResponse.status < 400 && location) return Response.redirect(location, 302);
-        if (!archiveResponse.ok) throw new Error("GitHub artifact download failed: HTTP " + archiveResponse.status);
-        return new Response(archiveResponse.body, { headers: { ...headers, "content-type": "application/zip", "content-disposition": `attachment; filename="studio-apk-${build.id}.zip"` } });
+        if (!response.ok) throw new Error("GitHub artifact download failed: HTTP " + response.status);
+        const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+        const entry = Object.entries(files).find(([name]) => name.toLowerCase().endsWith(".apk"));
+        if (!entry) return fail("The build artifact did not contain an APK file.", 404);
+        const [apkPath, apkBytes] = entry;
+        const filename = (apkPath.split("/").pop() || "studio-builder.apk").replace(/["\\]/g, "_");
+        return new Response(apkBytes, { headers: { ...headers, "content-type": "application/vnd.android.package-archive", "content-length": String(apkBytes.length), "content-disposition": 'attachment; filename="' + filename + '"', "cache-control": "private, no-store" } });
       }
 
       return fail("Route not found.", 404);
