@@ -1,0 +1,12 @@
+{
+  "name": "studio-builder-neon-api",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neon/functions": "^1.0.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
