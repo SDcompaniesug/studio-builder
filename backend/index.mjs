@@ -84,7 +84,7 @@ export default {
         return json({ projects: rows });
       }
 
-      const projectMatch = path.match(/^\\/projects\\/([0-9a-f-]{36})$/i);
+      const projectMatch = path.match(/^\/projects\/([0-9a-f-]{36})$/i);
       if (request.method === "GET" && projectMatch) {
         const { rows } = await pool.query(
           "SELECT id,name,package_name,description,technology,min_sdk,target_sdk,build_type,files,created_at,updated_at FROM studio_projects WHERE id=$1",
@@ -94,7 +94,7 @@ export default {
         return json({ project: rows[0] });
       }
 
-      const sourceMatch = path.match(/^\\/internal\\/projects\\/([0-9a-f-]{36})\\/files$/i);
+      const sourceMatch = path.match(/^\/internal\/projects\/([0-9a-f-]{36})\/files$/i);
       if (request.method === "GET" && sourceMatch) {
         const { rows } = await pool.query("SELECT id,files FROM studio_projects WHERE id=$1", [sourceMatch[1]]);
         if (!rows.length) return fail("Project not found.", 404);
@@ -130,14 +130,14 @@ export default {
         return json({ build: rows[0] }, 202);
       }
 
-      const buildMatch = path.match(/^\\/builds\\/([0-9a-f-]{36})$/i);
+      const buildMatch = path.match(/^\/builds\/([0-9a-f-]{36})$/i);
       if (request.method === "GET" && buildMatch) {
         const { rows } = await pool.query("SELECT * FROM studio_builds WHERE id=$1", [buildMatch[1]]);
         if (!rows.length) return fail("Build not found.", 404);
         return json({ build: rows[0] });
       }
 
-      const resultMatch = path.match(/^\\/internal\\/builds\\/([0-9a-f-]{36})\\/result$/i);
+      const resultMatch = path.match(/^\/internal\/builds\/([0-9a-f-]{36})\/result$/i);
       if (request.method === "POST" && resultMatch) {
         const data = await body(request);
         const status = ["succeeded", "failed"].includes(data.status) ? data.status : "failed";
@@ -152,7 +152,7 @@ export default {
         return json({ ok: true, build: rows[0] });
       }
 
-      const downloadMatch = path.match(/^\\/builds\\/([0-9a-f-]{36})\\/download$/i);
+      const downloadMatch = path.match(/^\/builds\/([0-9a-f-]{36})\/download$/i);
       if (request.method === "GET" && downloadMatch) {
         const { rows } = await pool.query("SELECT id,status,github_run_id FROM studio_builds WHERE id=$1", [downloadMatch[1]]);
         if (!rows.length) return fail("Build not found.", 404);
