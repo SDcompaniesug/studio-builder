@@ -78,7 +78,9 @@ export default {
       if (request.method === "GET" && path === "/projects") {
         const { rows } = await pool.query(
           `SELECT p.id,p.name,p.package_name,p.description,p.technology,p.min_sdk,p.target_sdk,p.build_type,p.created_at,p.updated_at,
-             (SELECT count(*)::int FROM studio_builds b WHERE b.project_id=p.id) AS build_count
+             (SELECT count(*)::int FROM studio_builds b WHERE b.project_id=p.id) AS build_count,
+             (SELECT b.id FROM studio_builds b WHERE b.project_id=p.id ORDER BY b.created_at DESC LIMIT 1) AS latest_build_id,
+             (SELECT b.status FROM studio_builds b WHERE b.project_id=p.id ORDER BY b.created_at DESC LIMIT 1) AS latest_build_status
            FROM studio_projects p ORDER BY p.updated_at DESC LIMIT 200`
         );
         return json({ projects: rows });
