@@ -33,7 +33,8 @@ jobs:
       - name: Smoke test deployed Neon API
         run: |
           curl --fail --silent --show-error "https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech/" | tee /tmp/api-health.json
-          node -e "const x=require('/tmp/api-health.json'); if(x.status!=='ok'||x.database!=='connected') process.exit(1)"
+          node -e "const x=require('/tmp/api-health.json'); if(x.status!=='ok'||x.database!=='configured') process.exit(1)"
+          curl --fail --silent --show-error "https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech/health/db" | tee /tmp/db-health.json
       - name: Install backend dependencies
         working-directory: backend
         run: npm install --no-audit --no-fund
