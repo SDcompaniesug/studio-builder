@@ -56,12 +56,6 @@ jobs:
               mavenCentral()
             }
           }
-          allprojects {
-            repositories {
-              google()
-              mavenCentral()
-            }
-          }
           GRADLE
       - name: Compile APK
         id: compile
