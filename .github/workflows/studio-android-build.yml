@@ -27,6 +27,10 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Register workflow run for live logs
+        run: |
+          jq -n --argjson runId "${{ github.run_id }}" --arg runUrl "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '{}' > /tmp/start.json
+          curl --fail --silent --show-error -X POST "$API_URL/internal/builds/$BUILD_ID/start" -H "content-type: application/json" --data-binary @/tmp/start.json || true
       - name: Fetch generated Android project
         run: |
           curl --fail --silent --show-error "$API_URL/internal/projects/$PROJECT_ID/files" -o /tmp/project.json
