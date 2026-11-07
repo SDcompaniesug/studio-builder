@@ -116,6 +116,12 @@ jobs:
               mavenCentral()
             }
           }
+          gradle.beforeProject { project ->
+            if (project.path == ':app') {
+              project.dependencies.add('implementation', 'androidx.appcompat:appcompat:1.7.0')
+              project.dependencies.add('implementation', 'androidx.core:core:1.15.0')
+            }
+          }
           GRADLE
       - name: Compile APK
         id: compile
