@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f5f7fb">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <title>Android Studio Builder</title>
 
 <style>
@@ -276,12 +277,12 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 </div>
 
 <div class="notice">
-Configure your AI provider and GitHub token in Settings before starting a remote build.
+Configure your AI provider to generate source code. Download ZIP and Build APK are separate actions.
 </div>
 
 <div class="actions">
 <button class="btn btn-light" onclick="resetForm()">Reset</button>
-<button class="btn btn-primary" onclick="createProject()">⚡ Create & Build</button>
+<button class="btn btn-primary" id="createProjectBtn" onclick="createProject()">✦ Create Project</button>
 </div>
 </div>
 
@@ -429,46 +430,10 @@ API keys are stored in browser local storage in this standalone version. For pro
 
 <!-- GITHUB SETTINGS -->
 <div class="panel setting-section" id="setting-github">
-
-<div class="panel-head">
-<div>
-<div class="panel-title">GitHub connection</div>
-<div class="panel-desc">Connect your GitHub account using a Personal Access Token.</div>
-</div>
-</div>
-
-<div class="field">
-<label>GITHUB PERSONAL ACCESS TOKEN</label>
-<div class="key-wrap">
-<input id="githubToken" type="password" placeholder="Enter your GitHub token">
-<button class="btn btn-light" onclick="toggleGithubKey()">Show</button>
-</div>
-<div class="hint">
-Your token is used to identify your account, create repositories and manage Android build workflows.
-</div>
-</div>
-
-<div class="provider-help">
-<p>
-<strong>Don't have a GitHub token?</strong><br>
-Create a Personal Access Token in your GitHub account settings.
-</p>
-<button class="btn btn-outline" onclick="window.open('https://github.com/settings/personal-access-tokens/new','_blank','noopener')">
-Get GitHub token ↗
-</button>
-</div>
-
-<div class="notice">
-For automatic repository creation and builds, grant the token the required repository permissions, including repository creation, Contents access and Actions access.
-</div>
-
-<div class="actions">
-<button class="btn btn-outline" onclick="testGithub()">Test connection</button>
-<button class="btn btn-primary" onclick="saveGithub()">Save settings</button>
-</div>
-
-<div id="githubMessage" class="provider-message"></div>
-
+ <div class="panel-head"><div><div class="panel-title">GitHub build integration</div><div class="panel-desc">GitHub Actions compiles your saved Android source into an APK.</div></div></div>
+ <div class="notice">Your GitHub Personal Access Token must be stored as <strong>GITHUB_TOKEN</strong> in the Neon Function environment. Never enter it in this browser.<br><br>Repository: <strong>SDcompaniesug/studio-builder</strong><br>Workflow: <strong>Studio Builder Android Build</strong></div>
+ <div class="panel-desc" style="margin-top:16px">Create Project and Download ZIP do not need GitHub credentials. The backend dispatches a build only after you tap Build APK.</div>
+ <div class="actions"><button class="btn btn-outline" onclick="window.open('https://github.com/SDcompaniesug/studio-builder/actions','_blank','noopener')">Open build workflows ↗</button></div>
 </div>
 
 <!-- GENERAL SETTINGS -->
@@ -1265,6 +1230,92 @@ location.reload();
 loadSettings();
 render();
 
+
+/* STUDIO BUILDER LIVE API */
+const STUDIO_API_BASE="https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech";
+async function studioApi(path,options={}){
+ const r=await fetch(STUDIO_API_BASE+path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+ const t=await r.text();let d={};try{d=t?JSON.parse(t):{};}catch{d={error:t};}
+ if(!r.ok)throw new Error(d.error||d.message||("HTTP "+r.status));return d;
+}
+function studioConfig(){
+ const p=localStorage.getItem("asb_provider")||"",key=localStorage.getItem("asb_apiKey")||"",model=localStorage.getItem("asb_model")||"";
+ if(!p||!key||!model)throw new Error("Configure your AI provider, API key and model in Settings first.");
+ if(p==="gemini")return{p,key,model};
+ let chatUrl=p==="openai"?"https://api.openai.com/v1/chat/completions":p==="groq"?"https://api.groq.com/openai/v1/chat/completions":p==="openrouter"?"https://openrouter.ai/api/v1/chat/completions":localStorage.getItem("asb_customUrl");
+ if(!chatUrl)throw new Error("Custom API URL is missing. Save AI settings again.");
+ return{p,key,model,chatUrl};
+}
+async function studioGenerate(project){
+ const c=studioConfig();
+ const prompt=`Generate a complete buildable Android Studio project. Return ONLY JSON: {"files":[{"path":"relative/path","content":"full file contents"}]}. No markdown.
+App: ${project.name}
+Package: ${project.packageName}
+Description: ${project.description}
+Technology: ${project.technology}
+minSdk: ${project.minSdk}; compileSdk/targetSdk: ${project.targetSdk}
+Requirements: AGP 8.7.3, Gradle 8.9 compatible, Java/JVM 17. For Java or Java + XML use Java and XML only, never Kotlin or Compose. For Kotlin + XML use Kotlin and XML, never Compose. Include settings.gradle, root build.gradle, gradle.properties, app/build.gradle, AndroidManifest.xml, every required source and resource file, and README.md. Implement all described pages and functions; no TODO placeholders. Ensure package paths, manifest activities, resource names and dependencies are consistent. Do not include binaries, secrets, local.properties, .git or build outputs. Return at most 100 files.`;
+ let raw="";
+ if(c.p==="gemini"){
+  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(c.model)+":generateContent",{method:"POST",headers:{"x-goog-api-key":c.key,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2,maxOutputTokens:30000,responseMimeType:"application/json"}})});
+  const d=await readApiResponse(r);raw=d.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("")||"";
+ }else{
+  const r=await fetch(c.chatUrl,{method:"POST",headers:{"Authorization":"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({model:c.model,messages:[{role:"system",content:"You are an expert Android engineer. Return only the requested JSON."},{role:"user",content:prompt}],temperature:.2,max_tokens:30000})});
+  const d=await readApiResponse(r);raw=d.choices?.[0]?.message?.content||"";
+ }
+ let obj;try{obj=JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,""));}catch{
+  const a=raw.indexOf("{"),b=raw.lastIndexOf("}");if(a<0||b<=a)throw new Error("AI response was empty or truncated; shorten the app description and retry.");
+  try{obj=JSON.parse(raw.slice(a,b+1));}catch{throw new Error("AI returned malformed source JSON. Retry with a shorter description.");}
+ }
+ if(!Array.isArray(obj.files)||!obj.files.length)throw new Error("AI returned no source files.");
+ const seen=new Set(),files=obj.files.map(f=>{
+  const path=String(f.path||"").replace(/^\.\//,"");
+  if(!path||path.startsWith("/")||path.includes("..")||path.includes("\\")||typeof f.content!=="string"||seen.has(path))throw new Error("AI generated an invalid or duplicate file path.");
+  seen.add(path);return{path,content:f.content};
+ });
+ if(!files.some(f=>["settings.gradle","settings.gradle.kts"].includes(f.path))||!files.some(f=>["app/build.gradle","app/build.gradle.kts"].includes(f.path)))throw new Error("Generated project is missing Gradle configuration.");
+ return files;
+}
+async function createProject(){
+ const project={name:$("appName").value.trim(),packageName:$("packageName").value.trim(),description:$("appDescription").value.trim(),technology:selectedTech,minSdk:Number($("minSdk").value),targetSdk:Number($("targetSdk").value),buildType:selectedBuild};
+ if(!project.name||!project.packageName||!project.description){alert("Please enter the app name, package name and description.");return;}
+ if(!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(project.packageName)){alert("Enter a valid Android package name.");return;}
+ const btn=$("createProjectBtn");btn.disabled=true;btn.textContent="Generating...";
+ showPage("logs");addLog("Generating Android source for "+project.name+".");
+ try{
+  const files=await studioGenerate(project);addLog("Generated "+files.length+" files. Saving source to Neon.");
+  const saved=await studioApi("/projects",{method:"POST",body:JSON.stringify({...project,files})});
+  addLog("Project saved to Neon: "+saved.project.id);await loadStudioProjects();resetForm();alert("Project created. Choose Download ZIP or Build APK from the Projects page.");showPage("projects");
+ }catch(e){addLog("Create project failed: "+e.message,"log-error");alert("Project creation failed: "+e.message);}
+ finally{btn.disabled=false;btn.textContent="✦ Create Project";}
+}
+async function loadStudioProjects(){
+ try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:"Source saved",date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
+ catch(e){addLog("Neon project list unavailable: "+e.message,"log-error");}
+}
+async function downloadProject(id){
+ try{const d=await studioApi("/projects/"+id),p=d.project;if(!window.JSZip)throw new Error("ZIP library failed to load.");const z=new JSZip();(p.files||[]).forEach(f=>z.file(f.path,f.content));const blob=await z.generateAsync({type:"blob",compression:"DEFLATE"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download=(p.name||"android-project").replace(/[^a-z0-9_-]/gi,"_")+".zip";a.click();URL.revokeObjectURL(u);addLog("Downloaded source ZIP: "+p.name);}
+ catch(e){alert("ZIP download failed: "+e.message);}
+}
+async function buildProject(id,kind="debug"){
+ if(!confirm("Start "+kind.toUpperCase()+" APK build?"))return;showPage("logs");addLog("Starting "+kind+" APK build.");
+ try{const d=await studioApi("/builds",{method:"POST",body:JSON.stringify({projectId:id,buildType:kind})});const bid=d.build.id;addLog("Build queued: "+bid);
+  for(let i=0;i<180;i++){await new Promise(r=>setTimeout(r,5000));const s=await studioApi("/builds/"+bid),b=s.build;if(b.logs){$("logConsole").textContent="[Build "+b.status+"]\n"+b.logs;}
+   if(["succeeded","failed","cancelled"].includes(b.status)){addLog("Build "+b.status,b.status==="succeeded"?"":"log-error");if(b.status==="succeeded")alert("APK build completed. Tap Download APK on the project card.");else alert("APK build failed. Check Build Logs.");await loadStudioProjects();return;}}
+  addLog("Build is still running. Check Build Logs again.");
+ }catch(e){addLog("Build request failed: "+e.message,"log-error");alert("Build could not start: "+e.message);}
+}
+async function downloadApk(projectId){
+ alert("Open the successful build's GitHub Actions run to download the APK artifact. The direct APK download endpoint is being completed.");
+}
+function render(){
+ $("totalProjects").textContent=projects.length;$("totalBuilds").textContent="—";$("successfulBuilds").textContent="—";
+ $("recentProjects").innerHTML=projects.length?projects.slice(0,5).map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f0f2f6"><div><b style="font-size:12px">${escapeHtml(p.name)}</b><div class="hint">${escapeHtml(p.pkg)}</div></div><span class="badge badge-success">Source saved</span></div>`).join(""):'<div class="empty">No projects created yet.</div>';
+ $("projectGrid").innerHTML=projects.length?projects.map(p=>`<div class="project-card"><div class="project-icon">▣</div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.pkg)}</p><div class="project-meta"><span class="badge badge-success">Source saved</span></div><div class="hint" style="margin-top:12px">${escapeHtml(p.tech)} · API ${escapeHtml(p.targetSdk)}</div><div class="actions" style="justify-content:flex-start"><button class="btn btn-outline" onclick="downloadProject('${p.id}')">Download ZIP</button><button class="btn btn-primary" onclick="buildProject('${p.id}','debug')">Build APK</button></div><div class="actions" style="justify-content:flex-start;margin-top:6px"><button class="btn btn-light" onclick="buildProject('${p.id}','release')">Build Release</button></div></div>`).join(""):'<div class="empty">No projects yet.</div>';
+ $("historyTable").innerHTML=projects.length?projects.map(p=>`<tr><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.build)}</td><td><span class="badge badge-success">Source saved</span></td><td>${escapeHtml(p.date)}</td></tr>`).join(""):'<tr><td colspan="4" class="empty">No builds yet.</td></tr>';
+}
+
+loadStudioProjects();
 </script>
 </body>
 </html>
