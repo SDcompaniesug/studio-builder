@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@neon/functions": "^1.0.0",
+    "@neon/functions": "^0.8.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {
