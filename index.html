@@ -218,18 +218,18 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 
 <div class="field">
 <label>APPLICATION NAME</label>
-<input id="appName" placeholder="e.g. My Awesome App">
+<input id="appName" placeholder="Optional — AI can choose a suitable name">
 </div>
 
 <div class="field">
 <label>PACKAGE NAME</label>
-<input id="packageName" placeholder="com.example.myapp">
+<input id="packageName" placeholder="Optional — AI can generate a valid package">
 </div>
 
 <div class="field full">
 <label>DESCRIBE YOUR APPLICATION</label>
 <textarea id="appDescription" placeholder="Describe the app you want to create, its features, pages, design and functionality..."></textarea>
-<div class="hint">Be detailed. Describe the screens, features and expected behavior.</div>
+<div class="hint">Describe the app idea and features. App name and package name are optional — AI can infer them.</div>
 </div>
 
 <div class="field full">
@@ -524,6 +524,7 @@ settings:["Settings","Configure AI and GitHub integrations."],downloads:["Downlo
 $("pageTitle").textContent=titles[name][0];
 $("pageSubtitle").textContent=titles[name][1];
 window.scrollTo(0,0);
+if(name==="downloads")loadDownloads();
 }
 
 document.querySelectorAll("[data-page]").forEach(b=>{
@@ -1251,49 +1252,91 @@ function studioConfig(){
  if(!chatUrl)throw new Error("Custom API URL is missing. Save AI settings again.");
  return{p,key,model,chatUrl};
 }
-async function studioGenerate(project){
+async function studioGenerate(project,editContext=null){
  const c=studioConfig();
- const prompt=`Generate a complete buildable Android Studio project. Return ONLY JSON: {"files":[{"path":"relative/path","content":"full file contents"}]}. No markdown.
-App: ${project.name}
-Package: ${project.packageName}
-Description: ${project.description}
-Technology: ${project.technology}
-minSdk: ${project.minSdk}; compileSdk/targetSdk: ${project.targetSdk}
-Requirements: AGP 8.7.3, Gradle 8.9 compatible, Java/JVM 17. For Java or Java + XML use Java and XML only, never Kotlin or Compose. For Kotlin + XML use Kotlin and XML, never Compose. Include settings.gradle, root build.gradle, gradle.properties, app/build.gradle, AndroidManifest.xml, every required source and resource file, and README.md. Implement all described pages and functions; no TODO placeholders. Ensure package paths, manifest activities, resource names and dependencies are consistent. Every AndroidX import must have its matching Gradle dependency; when using AppCompatActivity include androidx.appcompat:appcompat:1.7.0, and when using ActivityCompat include androidx.core:core:1.15.0. Declare all dependencies in app/build.gradle or app/build.gradle.kts. Do not include binaries, secrets, local.properties, .git or build outputs. Return at most 100 files.`;
+ const editRules=editContext?("\nEXISTING PROJECT FILES (preserve working behavior; modify only what the requested change requires):\n"+JSON.stringify(editContext.files)+"\nUSER CHANGE REQUEST: "+editContext.instruction):"";
+ const prompt=`You are a principal Android engineer and release-quality code reviewer. Generate a complete, coherent, production-minded Android Studio project.
+Return ONLY valid JSON: {"files":[{"path":"relative/path","content":"full file contents"}]}. No markdown, no explanations.
+APPLICATION NAME: ${project.name}
+PACKAGE: ${project.packageName}
+PRODUCT BRIEF: ${project.description}
+TECHNOLOGY: ${project.technology}
+MIN SDK: ${project.minSdk}; TARGET/COMPILE SDK: ${project.targetSdk}
+BUILD VARIANT: ${project.buildType}
+MANDATORY ENGINEERING RULES:
+- Use Android Gradle Plugin 8.7.3, Gradle 8.9 compatible configuration, JDK 17.
+- Respect the selected stack exactly. Java/Java + XML means Java and XML only, no Kotlin and no Compose. Kotlin + XML means Kotlin and XML, no Compose. Flutter/React Native/WebView must include the correct complete project structure and dependencies.
+- Include settings.gradle, root build.gradle, gradle.properties, app/build.gradle, app/src/main/AndroidManifest.xml, all source/resource files and README.md.
+- Use consistent package declarations, paths, activity names, manifest registrations, resource IDs, themes and dependencies.
+- Every referenced drawable, mipmap, string, color, style, layout and menu resource must exist. Do not use nonexistent resources or Android APIs newer than minSdk without version guards.
+- Add all required permissions and dependencies. Do not use obsolete or incompatible APIs. Avoid duplicate classes/dependencies and unresolved imports.
+- Implement every requested screen and primary interaction. No TODOs, stubs, fake buttons, pseudocode or placeholder pages. Add sensible loading, empty, error and permission states.
+- Use responsive, polished native UI and accessible labels. Do not hardcode secrets or private API keys.
+- Keep the project self-contained and buildable offline except for declared Maven dependencies. Do not include gradlew binaries, local.properties, .git, build outputs or secrets.
+- Include a launcher icon resource and make manifest icon references valid.
+- Check every file path for uniqueness and ensure the final JSON is syntactically valid.
+- Return no more than 120 files. Prefer a complete, maintainable architecture over a one-activity demo.
+${editRules}`;
  let raw="";
  if(c.p==="gemini"){
-  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(c.model)+":generateContent",{method:"POST",headers:{"x-goog-api-key":c.key,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2,maxOutputTokens:30000,responseMimeType:"application/json"}})});
+  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(c.model)+":generateContent",{method:"POST",headers:{"x-goog-api-key":c.key,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.15,maxOutputTokens:30000,responseMimeType:"application/json"}})});
   const d=await readApiResponse(r);raw=d.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("")||"";
  }else{
-  const r=await fetch(c.chatUrl,{method:"POST",headers:{"Authorization":"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({model:c.model,messages:[{role:"system",content:"You are an expert Android engineer. Return only the requested JSON."},{role:"user",content:prompt}],temperature:.2,max_tokens:30000})});
+  const r=await fetch(c.chatUrl,{method:"POST",headers:{"Authorization":"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({model:c.model,messages:[{role:"system",content:"You are a principal Android engineer. Follow all constraints exactly. Return only valid JSON with complete source files. Before responding, internally audit imports, resources, package names, manifest entries, Gradle plugins and dependencies."},{role:"user",content:prompt}],temperature:.15,max_tokens:30000})});
   const d=await readApiResponse(r);raw=d.choices?.[0]?.message?.content||"";
  }
- let obj;try{obj=JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,""));}catch{
-  const a=raw.indexOf("{"),b=raw.lastIndexOf("}");if(a<0||b<=a)throw new Error("AI response was empty or truncated; shorten the app description and retry.");
-  try{obj=JSON.parse(raw.slice(a,b+1));}catch{throw new Error("AI returned malformed source JSON. Retry with a shorter description.");}
+ let obj;try{obj=JSON.parse(raw.trim().replace(/^```(?:json)?\\s*/i,"").replace(/\\s*```$/,""));}catch{
+  const a=raw.indexOf("{"),b=raw.lastIndexOf("}");if(a<0||b<=a)throw new Error("AI response was empty or truncated. Choose a model with a larger output limit or simplify the request.");
+  try{obj=JSON.parse(raw.slice(a,b+1));}catch{throw new Error("AI returned malformed source JSON. Retry with a model that supports long structured output.");}
  }
  if(!Array.isArray(obj.files)||!obj.files.length)throw new Error("AI returned no source files.");
  const seen=new Set(),files=obj.files.map(f=>{
   const path=String(f.path||"").replace(/^\.\//,"");
-  if(!path||path.startsWith("/")||path.includes("..")||path.includes("\\")||typeof f.content!=="string"||seen.has(path))throw new Error("AI generated an invalid or duplicate file path.");
+  if(!path||path.startsWith("/")||path.includes("..")||path.includes("\\\\")||typeof f.content!=="string"||seen.has(path))throw new Error("AI generated an invalid or duplicate file path.");
   seen.add(path);return{path,content:f.content};
  });
- if(!files.some(f=>["settings.gradle","settings.gradle.kts"].includes(f.path))||!files.some(f=>["app/build.gradle","app/build.gradle.kts"].includes(f.path)))throw new Error("Generated project is missing Gradle configuration.");
+ const required=["settings.gradle","settings.gradle.kts"];
+ if(!files.some(f=>required.includes(f.path))||!files.some(f=>["app/build.gradle","app/build.gradle.kts"].includes(f.path))||!files.some(f=>f.path==="app/src/main/AndroidManifest.xml"))throw new Error("Generated project is incomplete: Gradle settings, app Gradle file and AndroidManifest.xml are required.");
+ const manifest=files.find(f=>f.path==="app/src/main/AndroidManifest.xml").content;
+ if(!manifest.includes(project.packageName))throw new Error("Generated manifest does not match the selected package name. Please retry generation.");
  return files;
 }
+function slugPackage(name){const parts=String(name||"myapp").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(/\\s+/).filter(Boolean);const app=parts.pop()||"myapp";const org=parts.join("")||"studio";return "com."+org.replace(/^[^a-z]/,"app")+"."+app.replace(/^[^a-z]/,"app");}
 async function createProject(){
- const project={name:$("appName").value.trim(),packageName:$("packageName").value.trim(),description:$("appDescription").value.trim(),technology:selectedTech,minSdk:Number($("minSdk").value),targetSdk:Number($("targetSdk").value),buildType:selectedBuild};
- if(!project.name||!project.packageName||!project.description){alert("Please enter the app name, package name and description.");return;}
- if(!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(project.packageName)){alert("Enter a valid Android package name.");return;}
- const btn=$("createProjectBtn");btn.disabled=true;btn.textContent="Generating...";
- showPage("logs");addLog("Generating Android source for "+project.name+".");
+ const description=$("appDescription").value.trim();
+ if(!description){alert("Describe the app idea or features first. The AI can automatically choose the app name and package name.");$("appDescription").focus();return;}
+ const inferredName=$("appName").value.trim()||description.split(/[.!?\\n]/)[0].trim().slice(0,48)||"My Android App";
+ const inferredPackage=$("packageName").value.trim()||slugPackage(inferredName);
+ const project={name:inferredName,packageName:inferredPackage,description,technology:selectedTech,minSdk:Number($("minSdk").value)||24,targetSdk:Number($("targetSdk").value)||35,buildType:selectedBuild};
+ if(!/^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(project.packageName)){alert("The package name is invalid. Leave it blank and AI will choose a valid one, or enter a valid name such as com.example.myapp.");return;}
+ const btn=$("createProjectBtn");btn.disabled=true;btn.textContent="AI designing...";
+ showPage("logs");$("logConsole").textContent="";addLog("Starting AI project design and source generation.");addLog("App name: "+project.name+" | Package: "+project.packageName);addLog("Selected stack: "+project.technology);
  try{
-  const files=await studioGenerate(project);addLog("Generated "+files.length+" files. Saving source to Neon.");
+  const files=await studioGenerate(project);addLog("AI generated "+files.length+" project files. Running structural checks.");
   const saved=await studioApi("/projects",{method:"POST",body:JSON.stringify({...project,files})});
-  addLog("Project saved to Neon: "+saved.project.id);await loadStudioProjects();resetForm();alert("Project created. Choose Download ZIP or Build APK from the Projects page.");showPage("projects");
- }catch(e){addLog("Create project failed: "+e.message,"log-error");alert("Project creation failed: "+e.message);}
+  addLog("Source saved to Neon. Project ID: "+saved.project.id);await loadStudioProjects();await loadDownloads();resetForm();alert("Project generated and saved. You can download its ZIP, build an APK, or use Edit with AI.");showPage("projects");
+ }catch(e){addLog("Project generation failed: "+e.message,"log-error");alert("Project generation failed: "+e.message);}
  finally{btn.disabled=false;btn.textContent="✦ Create Project";}
 }
+async function editProjectWithAI(id){
+ const instruction=prompt("Describe exactly what you want to change in this app. The AI will update the existing project source.");
+ if(!instruction||!instruction.trim())return;
+ const card=projects.find(p=>p.id===id);if(!card)return;
+ showPage("logs");$("logConsole").textContent="";addLog("Loading existing project source for AI editing.");
+ try{
+  const current=await studioApi("/projects/"+encodeURIComponent(id));
+  const p=current.project;
+  const project={name:p.name,packageName:p.package_name,description:p.description,technology:p.technology,minSdk:p.min_sdk,targetSdk:p.target_sdk,buildType:p.build_type};
+  addLog("AI is applying requested changes while preserving existing project behavior.");
+  const files=await studioGenerate(project,{files:p.files,instruction:instruction.trim()});
+  addLog("Updated "+files.length+" files. Saving revised project source.");
+  await studioApi("/projects/"+encodeURIComponent(id),{method:"PUT",body:JSON.stringify({files})});
+  addLog("AI changes saved. Start a fresh APK build to validate the updated source.");
+  await loadStudioProjects();await loadDownloads();alert("AI edits saved. Build the updated project to verify it compiles.");
+  showPage("projects");
+ }catch(e){addLog("AI edit failed: "+e.message,"log-error");alert("AI edit failed: "+e.message);}
+}
+
 async function loadStudioProjects(){
  try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:p.latest_build_status||"Source saved",buildId:(JSON.parse(localStorage.getItem("asb_builds")||"{}")[p.id]||p.latest_build_id),latest_build_id:p.latest_build_id,latest_build_status:p.latest_build_status,date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
  catch(e){addLog("Neon project list unavailable: "+e.message,"log-error");}
@@ -1303,7 +1346,7 @@ async function buildProject(id,kind="debug"){
  if(!confirm("Start "+kind.toUpperCase()+" APK build?"))return;showPage("logs");addLog("Starting "+kind+" APK build.");
  try{const d=await studioApi("/builds",{method:"POST",body:JSON.stringify({projectId:id,buildType:kind})});const bid=d.build.id;const buildMap=JSON.parse(localStorage.getItem("asb_builds")||"{}");buildMap[id]=bid;localStorage.setItem("asb_builds",JSON.stringify(buildMap));const projectCard=projects.find(p=>p.id===id);if(projectCard)projectCard.buildId=bid;addLog("Build queued: "+bid);
   for(let i=0;i<180;i++){await new Promise(r=>setTimeout(r,5000));const s=await studioApi("/builds/"+bid),b=s.build;if(b.logs){$("logConsole").textContent="[Build "+b.status+"]\n"+b.logs;}
-   if(["succeeded","failed","cancelled"].includes(b.status)){addLog("Build "+b.status,b.status==="succeeded"?"":"log-error");if(b.status==="succeeded")alert("APK build completed. Tap Download APK on the project card.");else alert("APK build failed. Check Build Logs.");await loadStudioProjects();return;}}
+   if(["succeeded","failed","cancelled"].includes(b.status)){addLog("Build "+b.status,b.status==="succeeded"?"":"log-error");if(b.status==="succeeded")alert("APK build completed. Tap Download APK on the project card.");else alert("APK build failed. Check the real workflow logs.");await loadStudioProjects();await loadDownloads();return;}}
   addLog("Build is still running. Check Build Logs again.");
  }catch(e){addLog("Build request failed: "+e.message,"log-error");alert("Build could not start: "+e.message);}
 }
@@ -1325,7 +1368,7 @@ async function loadDownloads(){
 function render(){
  $("totalProjects").textContent=projects.length;$("totalBuilds").textContent="—";$("successfulBuilds").textContent="—";
  $("recentProjects").innerHTML=projects.length?projects.slice(0,5).map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f0f2f6"><div><b style="font-size:12px">${escapeHtml(p.name)}</b><div class="hint">${escapeHtml(p.pkg)}</div></div><span class="badge badge-success">Source saved</span></div>`).join(""):'<div class="empty">No projects created yet.</div>';
- $("projectGrid").innerHTML=projects.length?projects.map(p=>`<div class="project-card"><div class="project-icon">▣</div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.pkg)}</p><div class="project-meta"><span class="badge badge-success">Source saved</span></div><div class="hint" style="margin-top:12px">${escapeHtml(p.tech)} · API ${escapeHtml(p.targetSdk)}</div><div class="actions" style="justify-content:flex-start"><button class="btn btn-outline" onclick="downloadProject('${p.id}')">Download ZIP</button><button class="btn btn-primary" onclick="buildProject('${p.id}','debug')">Build APK</button></div><div class="actions" style="justify-content:flex-start;margin-top:6px"><button class="btn btn-light" onclick="buildProject('${p.id}','release')\">Build Release</button><button class=\"btn btn-outline\" onclick=\"downloadApk('${p.buildId}')\">Download APK</button></div></div>`).join(""):'<div class="empty">No projects yet.</div>';
+ $("projectGrid").innerHTML=projects.length?projects.map(p=>`<div class="project-card"><div class="project-icon">▣</div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.pkg)}</p><div class="project-meta"><span class="badge badge-success">Source saved</span></div><div class="hint" style="margin-top:12px">${escapeHtml(p.tech)} · API ${escapeHtml(p.targetSdk)}</div><div class="actions" style="justify-content:flex-start"><button class="btn btn-outline" onclick="downloadProject('${p.id}')">Download ZIP</button><button class="btn btn-primary" onclick="buildProject('${p.id}','debug')">Build APK</button><button class="btn btn-light" onclick="editProjectWithAI('${p.id}')">✦ Edit with AI</button></div><div class="actions" style="justify-content:flex-start;margin-top:6px"><button class="btn btn-light" onclick="buildProject('${p.id}','release')\">Build Release</button><button class=\"btn btn-outline\" onclick=\"downloadApk('${p.buildId}')\">Download APK</button></div></div>`).join(""):'<div class="empty">No projects yet.</div>';
  $("historyTable").innerHTML=projects.length?projects.map(p=>`<tr><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.build)}</td><td><span class="badge badge-success">Source saved</span></td><td>${escapeHtml(p.date)}</td></tr>`).join(""):'<tr><td colspan="4" class="empty">No builds yet.</td></tr>';
 }
 
