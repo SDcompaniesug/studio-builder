@@ -45,9 +45,9 @@ jobs:
       - name: Bundle Neon Function
         run: |
           mkdir -p dist
-          npx --yes esbuild backend/index.mjs --bundle --platform=node --format=esm --packages=bundle --outfile=dist/index.mjs
+          npx --yes esbuild backend/index.mjs --bundle --platform=node --format=cjs --packages=bundle --outfile=dist/index.js
           cd dist
-          zip -9 ../studiobuildapi.zip index.mjs
+          zip -9 ../studiobuildapi.zip index.js
           cd ..
           base64 -w0 studiobuildapi.zip > studiobuildapi.zip.b64
           git config user.name "github-actions[bot]"
