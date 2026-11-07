@@ -37,7 +37,7 @@ With the Neon CLI installed and authenticated, link this project and deploy the 
 
 ```bash
 neon link --project-id dry-fire-13288712
-neon functions deploy studiobuildapi --src backend/index.cjs --env GITHUB_TOKEN=YOUR_TOKEN
+neon functions deploy studiobuildapi --src backend/index.mjs --env GITHUB_TOKEN=YOUR_TOKEN
 ```
 
 Run the deploy command from the repository root after dependencies have been installed in `backend/`:
@@ -63,4 +63,4 @@ Generated native Android projects are instructed to use Android Gradle Plugin 8.
 
 The API currently has no user sign-in or per-user authorization. Its project list and source endpoints are public to anyone who knows the function URL and a project UUID. Do not store private or sensitive app source in this deployment until authentication is added. The repository is public, so do not commit API keys, GitHub tokens, database URLs, or signing keys.
 
-The Neon Function is deployed as a Node.js 24 CommonJS handler. The CI workflow checks frontend syntax and probes the API and database endpoints.
+The Neon Function is deployed as a Node.js 24 ESM handler with Node's CommonJS bridge for pg. The CI workflow checks frontend syntax and probes the API and database endpoints.
