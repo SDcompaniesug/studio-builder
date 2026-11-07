@@ -161,8 +161,15 @@ export default {
         const artifacts = await github(`/repos/${OWNER}/${REPO}/actions/runs/${build.github_run_id}/artifacts`);
         const artifact = (artifacts.artifacts || []).find(a => a.name === "studio-apk-" + build.id && !a.expired);
         if (!artifact) return fail("APK artifact was not found. Check the GitHub Actions run.", 404);
-        const archive = await github(`/repos/${OWNER}/${REPO}/actions/artifacts/${artifact.id}/zip`, { method: "GET" });
-        return json({ downloadUrl: archive.url || null, runUrl: `https://github.com/${OWNER}/${REPO}/actions/runs/${build.github_run_id}` });
+        const token = process.env.GITHUB_TOKEN;
+        const archiveResponse = await fetch(`${GH_API}/repos/${OWNER}/${REPO}/actions/artifacts/${artifact.id}/zip`, {
+          headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+          redirect: "manual"
+        });
+        const location = archiveResponse.headers.get("location");
+        if (archiveResponse.status >= 300 && archiveResponse.status < 400 && location) return Response.redirect(location, 302);
+        if (!archiveResponse.ok) throw new Error("GitHub artifact download failed: HTTP " + archiveResponse.status);
+        return new Response(archiveResponse.body, { headers: { ...headers, "content-type": "application/zip", "content-disposition": `attachment; filename="studio-apk-${build.id}.zip"` } });
       }
 
       return fail("Route not found.", 404);
