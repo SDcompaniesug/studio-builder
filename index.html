@@ -159,6 +159,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 <button class="nav-btn active" data-page="home"><span class="nav-icon">⌂</span>Home</button>
 <button class="nav-btn" data-page="logs"><span class="nav-icon">≡</span>Build Logs</button>
 <button class="nav-btn" data-page="projects"><span class="nav-icon">▣</span>Projects</button>
+<button class="nav-btn" data-page="downloads"><span class="nav-icon">⇩</span>Downloads</button>
 
 <div class="nav-label">PREFERENCES</div>
 <button class="nav-btn" data-page="settings"><span class="nav-icon">⚙</span>Settings</button>
@@ -342,6 +343,9 @@ Waiting for a build...</div>
 </div>
 </section>
 
+<!-- DOWNLOAD MANAGER -->
+<section class="page" id="downloads"><div class="panel"><div class="panel-head"><div><div class="panel-title">Download manager</div><div class="panel-desc">Download saved project ZIPs and completed APK builds.</div></div><button class="btn btn-outline" onclick="loadDownloads()">↻ Refresh</button></div><div id="downloadManagerList" class="empty">Loading downloads...</div></div></section>
+
 <!-- SETTINGS -->
 <section class="page" id="settings">
 
@@ -469,6 +473,7 @@ API keys are stored in browser local storage in this standalone version. For pro
 <button class="nav-btn active" data-page="home"><span class="nav-icon">⌂</span>Home</button>
 <button class="nav-btn" data-page="logs"><span class="nav-icon">≡</span>Logs</button>
 <button class="nav-btn" data-page="projects"><span class="nav-icon">▣</span>Projects</button>
+<button class="nav-btn" data-page="downloads"><span class="nav-icon">⇩</span>Downloads</button>
 <button class="nav-btn" data-page="settings"><span class="nav-icon">⚙</span>Settings</button>
 </nav>
 
@@ -513,7 +518,7 @@ const titles={
 home:["Dashboard","Create and manage your Android applications."],
 logs:["Build Logs","View build output and activity."],
 projects:["Projects","Manage your applications."],
-settings:["Settings","Configure AI and GitHub integrations."]
+settings:["Settings","Configure AI and GitHub integrations."],downloads:["Downloads","Manage source ZIPs and completed APK files."]
 };
 
 $("pageTitle").textContent=titles[name][0];
@@ -1293,10 +1298,7 @@ async function loadStudioProjects(){
  try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:p.latest_build_status||"Source saved",buildId:(JSON.parse(localStorage.getItem("asb_builds")||"{}")[p.id]||p.latest_build_id),latest_build_id:p.latest_build_id,latest_build_status:p.latest_build_status,date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
  catch(e){addLog("Neon project list unavailable: "+e.message,"log-error");}
 }
-async function downloadProject(id){
- try{const d=await studioApi("/projects/"+id),p=d.project;if(!window.JSZip)throw new Error("ZIP library failed to load.");const z=new JSZip();(p.files||[]).forEach(f=>z.file(f.path,f.content));const blob=await z.generateAsync({type:"blob",compression:"DEFLATE"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download=(p.name||"android-project").replace(/[^a-z0-9_-]/gi,"_")+".zip";a.click();URL.revokeObjectURL(u);addLog("Downloaded source ZIP: "+p.name);}
- catch(e){alert("ZIP download failed: "+e.message);}
-}
+async function downloadProject(id){triggerDownload(STUDIO_API_BASE+"/projects/"+encodeURIComponent(id)+"/download");addLog("Requested source ZIP download.");}
 async function buildProject(id,kind="debug"){
  if(!confirm("Start "+kind.toUpperCase()+" APK build?"))return;showPage("logs");addLog("Starting "+kind+" APK build.");
  try{const d=await studioApi("/builds",{method:"POST",body:JSON.stringify({projectId:id,buildType:kind})});const bid=d.build.id;const buildMap=JSON.parse(localStorage.getItem("asb_builds")||"{}");buildMap[id]=bid;localStorage.setItem("asb_builds",JSON.stringify(buildMap));const projectCard=projects.find(p=>p.id===id);if(projectCard)projectCard.buildId=bid;addLog("Build queued: "+bid);
@@ -1307,7 +1309,18 @@ async function buildProject(id,kind="debug"){
 }
 function downloadApk(buildId){
  if(!buildId){alert("Build an APK first.");return;}
- const a=document.createElement("a");a.href=STUDIO_API_BASE+"/builds/"+buildId+"/download";a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
+ triggerDownload(STUDIO_API_BASE+"/builds/"+encodeURIComponent(buildId)+"/download");addLog("Requested APK download.");
+}
+function triggerDownload(url){const a=document.createElement("a");a.href=url;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();}
+async function loadDownloads(){
+ const host=$("downloadManagerList");if(!host)return;host.innerHTML='<div class="empty">Loading downloads...</div>';
+ try{
+  const d=await studioApi("/downloads"),items=d.downloads||[];
+  host.innerHTML=items.length?items.map(x=>{
+   const ready=x.build_status==="succeeded"&&x.apkUrl;
+   return '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #f0f2f6;flex-wrap:wrap"><div style="min-width:180px;flex:1"><b style="font-size:12px">'+escapeHtml(x.name)+'</b><div class="hint">'+escapeHtml(x.package_name)+' · '+escapeHtml(x.build_type||"Source only")+'</div><div class="hint">Build status: '+escapeHtml(x.build_status||"No APK build")+'</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="downloadProject(\''+x.project_id+'\')">Download ZIP</button>'+(ready?'<button class="btn btn-primary" onclick="downloadApk(\''+x.build_id+'\')">Download APK</button>':'<button class="btn btn-light" disabled>APK not ready</button>')+'</div></div>';
+  }).join(""):'<div class="empty">No projects or downloads yet.</div>';
+ }catch(e){host.innerHTML='<div class="empty">Could not load downloads: '+escapeHtml(e.message)+'</div>';}
 }
 function render(){
  $("totalProjects").textContent=projects.length;$("totalBuilds").textContent="—";$("successfulBuilds").textContent="—";
@@ -1317,6 +1330,7 @@ function render(){
 }
 
 loadStudioProjects();
+loadDownloads();
 </script>
 </body>
 </html>
