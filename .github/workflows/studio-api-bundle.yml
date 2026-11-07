@@ -2,9 +2,6 @@ name: Package Neon Function
 on:
   push:
     branches: [main]
-    paths:
-      - "backend/**"
-      - ".github/workflows/studio-api-bundle.yml"
   workflow_dispatch:
 permissions:
   contents: read
