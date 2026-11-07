@@ -30,6 +30,10 @@ jobs:
           open("/tmp/studio-inline.js", "w", encoding="utf-8").write(inline[-1])
           PY
           node --check /tmp/studio-inline.js
+      - name: Smoke test deployed Neon API
+        run: |
+          curl --fail --silent --show-error "https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech/" | tee /tmp/api-health.json
+          node -e "const x=require('/tmp/api-health.json'); if(x.status!=='ok'||x.database!=='connected') process.exit(1)"
       - name: Install backend dependencies
         working-directory: backend
         run: npm install --no-audit --no-fund
