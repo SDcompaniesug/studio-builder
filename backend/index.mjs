@@ -9,7 +9,7 @@ const GH_API = "https://api.github.com";
 const headers = {
   "content-type": "application/json",
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
+  "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
   "access-control-allow-headers": "content-type"
 };
 
@@ -108,6 +108,18 @@ export default {
         return new Response(archive, { headers: { ...headers, "content-type": "application/zip", "content-length": String(archive.length), "content-disposition": 'attachment; filename="' + filename + '"' } });
       }
 
+      const projectUpdateMatch = path.match(/^\/projects\/([0-9a-f-]{36})$/i);
+      if (request.method === "PUT" && projectUpdateMatch) {
+        const data = await body(request);
+        if (!validFiles(data.files)) return fail("Updated project files are missing or invalid.");
+        const { rows } = await pool.query(
+          "UPDATE studio_projects SET files=$2::jsonb,updated_at=now() WHERE id=$1 RETURNING id,name,package_name,updated_at",
+          [projectUpdateMatch[1], JSON.stringify(data.files)]
+        );
+        if (!rows.length) return fail("Project not found.", 404);
+        return json({ project: rows[0], fileCount: data.files.length });
+      }
+
       const projectMatch = path.match(/^\/projects\/([0-9a-f-]{36})$/i);
       if (request.method === "GET" && projectMatch) {
         const { rows } = await pool.query(
@@ -159,6 +171,48 @@ export default {
         const { rows } = await pool.query("SELECT * FROM studio_builds WHERE id=$1", [buildMatch[1]]);
         if (!rows.length) return fail("Build not found.", 404);
         return json({ build: rows[0] });
+      }
+
+      const startMatch = path.match(/^\/internal\/builds\/([0-9a-f-]{36})\/start$/i);
+      if (request.method === "POST" && startMatch) {
+        const data = await body(request);
+        const { rows } = await pool.query(
+          "UPDATE studio_builds SET status='running',github_run_id=$2,github_run_url=$3,updated_at=now() WHERE id=$1 RETURNING id,status",
+          [startMatch[1], data.runId || null, data.runUrl || null]
+        );
+        if (!rows.length) return fail("Build not found.", 404);
+        return json({ ok: true, build: rows[0] });
+      }
+
+      const liveLogsMatch = path.match(/^\/builds\/([0-9a-f-]{36})\/logs$/i);
+      if (request.method === "GET" && liveLogsMatch) {
+        const { rows } = await pool.query("SELECT id,status,logs,github_run_id FROM studio_builds WHERE id=$1", [liveLogsMatch[1]]);
+        if (!rows.length) return fail("Build not found.", 404);
+        const build = rows[0];
+        if (!build.github_run_id) return json({ status: build.status, logs: build.logs || "Waiting for GitHub Actions runner to start..." });
+        try {
+          const jobs = await github(`/repos/${OWNER}/${REPO}/actions/runs/${build.github_run_id}/jobs?per_page=100`);
+          const output = [];
+          for (const job of jobs.jobs || []) {
+            output.push("=== "+job.name+" · "+job.status+(job.conclusion ? " · "+job.conclusion : "")+" ===");
+            if (job.status === "completed") {
+              const response = await fetch(`${GH_API}/repos/${OWNER}/${REPO}/actions/jobs/${job.id}/logs`, {
+                headers: { "Authorization": "Bearer " + process.env.GITHUB_TOKEN, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
+              });
+              if (response.ok) {
+                const archive = unzipSync(new Uint8Array(await response.arrayBuffer()));
+                for (const [filename, bytes] of Object.entries(archive)) {
+                  if (filename.endsWith(".txt")) output.push(new TextDecoder().decode(bytes));
+                }
+              }
+            } else {
+              output.push("Workflow step is running. Live output will appear when GitHub publishes the job log.");
+            }
+          }
+          return json({ status: build.status, logs: output.join("\\n").slice(-50000) || build.logs || "Waiting for workflow logs..." });
+        } catch (error) {
+          return json({ status: build.status, logs: build.logs || "Workflow logs are not available yet: "+error.message });
+        }
       }
 
       const resultMatch = path.match(/^\/internal\/builds\/([0-9a-f-]{36})\/result$/i);
