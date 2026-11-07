@@ -1,0 +1,86 @@
+name: Studio Builder Android Build
+on:
+  repository_dispatch:
+    types: [studio-build]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      API_URL: https://br-steep-leaf-b59uvinr-studiobuildapi.compute.c-7.us-east-2.aws.neon.tech
+      BUILD_ID: ${{ github.event.client_payload.buildId }}
+      PROJECT_ID: ${{ github.event.client_payload.projectId }}
+      BUILD_TYPE: ${{ github.event.client_payload.buildType }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Fetch generated Android project
+        run: |
+          curl --fail --silent --show-error "$API_URL/internal/projects/$PROJECT_ID/files" -o /tmp/project.json
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const data = JSON.parse(fs.readFileSync('/tmp/project.json', 'utf8'));
+          if (!Array.isArray(data.files) || !data.files.length) throw new Error('No source files were returned');
+          for (const file of data.files) {
+            if (!file.path || file.path.startsWith('/') || file.path.includes('..') || file.path.includes('\\\\')) throw new Error('Unsafe source path');
+            const target = path.resolve(process.cwd(), file.path);
+            if (!target.startsWith(process.cwd() + path.sep)) throw new Error('Unsafe source path');
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            fs.writeFileSync(target, file.content, 'utf8');
+          }
+          NODE
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Compile APK
+        id: compile
+        shell: bash
+        run: |
+          set +e
+          if [ "$BUILD_TYPE" = "release" ]; then
+            gradle --no-daemon assembleRelease 2>&1 | tee /tmp/build.log
+          else
+            gradle --no-daemon assembleDebug 2>&1 | tee /tmp/build.log
+          fi
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Collect APK
+        if: steps.compile.outputs.exit_code == '0'
+        run: |
+          mkdir -p output
+          find . -path "*/build/outputs/apk/*/*.apk" -type f -exec cp {} output/ \;
+          test -n "$(find output -name '*.apk' -type f -print -quit)"
+      - uses: actions/upload-artifact@v4
+        if: steps.compile.outputs.exit_code == '0'
+        with:
+          name: studio-apk-${{ env.BUILD_ID }}
+          path: output/*.apk
+          retention-days: 7
+      - name: Report result to Studio Builder
+        if: always()
+        env:
+          EXIT_CODE: ${{ steps.compile.outputs.exit_code }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$EXIT_CODE" = "0" ]; then STATUS=succeeded; else STATUS=failed; fi
+          LOGS="$(tail -c 45000 /tmp/build.log 2>/dev/null || echo 'Build did not reach Gradle compilation.')"
+          jq -n --arg status "$STATUS" --arg logs "$LOGS" --arg runUrl "$RUN_URL" --argjson runId "$RUN_ID" --arg error "$([ "$STATUS" = failed ] && echo 'Gradle build failed; open the Actions run for full logs.' || echo '')" '{status:$status,logs:$logs,runId:$runId,runUrl:$runUrl,error:$error}' > /tmp/result.json
+          curl --fail --silent --show-error -X POST "$API_URL/internal/builds/$BUILD_ID/result" -H "content-type: application/json" --data-binary @/tmp/result.json || true
+      - name: Fail workflow when Gradle failed
+        if: steps.compile.outputs.exit_code != '0'
+        run: exit 1
