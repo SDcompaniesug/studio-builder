@@ -51,14 +51,6 @@ jobs:
           npx --yes esbuild backend/index.mjs --bundle --platform=node --format=esm --packages=bundle --banner:js='import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' --outfile=dist/index.mjs
           cd dist
           zip -9 ../studiobuildapi.zip index.mjs
-          cd ..
-          base64 -w0 studiobuildapi.zip > studiobuildapi.zip.b64
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add studiobuildapi.zip.b64
-          git commit -m "Add generated Neon bundle"
-          git pull --rebase origin main
-          git push
       - name: Deploy Neon Function with GitHub integration token
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
