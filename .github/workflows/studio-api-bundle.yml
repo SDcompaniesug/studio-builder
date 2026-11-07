@@ -4,10 +4,11 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   actions: read
 jobs:
   bundle:
+    if: ${{ !contains(github.event.head_commit.message, 'Add generated Neon bundle') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +24,13 @@ jobs:
           npx --yes esbuild backend/index.mjs --bundle --platform=node --format=esm --packages=bundle --outfile=dist/index.mjs
           cd dist
           zip -9 ../studiobuildapi.zip index.mjs
+          cd ..
+          base64 -w0 studiobuildapi.zip > studiobuildapi.zip.b64
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add studiobuildapi.zip.b64
+          git commit -m "Add generated Neon bundle"
+          git push
       - uses: actions/upload-artifact@v4
         with:
           name: neon-function-bundle
