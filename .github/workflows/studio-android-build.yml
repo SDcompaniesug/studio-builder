@@ -43,6 +43,66 @@ jobs:
             fs.writeFileSync(target, file.content, 'utf8');
           }
           NODE
+      - name: Repair missing Android launcher icon resources
+        run: |
+          python3 <<'PY'
+          import os, re, math, struct, zlib
+          from pathlib import Path
+          manifest = Path("app/src/main/AndroidManifest.xml")
+          if not manifest.exists():
+              raise SystemExit("Generated project is missing app/src/main/AndroidManifest.xml")
+          xml = manifest.read_text(encoding="utf-8")
+          names = set(re.findall(r'@mipmap/([A-Za-z0-9_]+)', xml))
+          if not names:
+              names = {"ic_launcher"}
+          def png(path):
+              size = 192
+              rows = []
+              def inside(poly, x, y):
+                  c = False
+                  j = len(poly)-1
+                  for i in range(len(poly)):
+                      xi, yi = poly[i]; xj, yj = poly[j]
+                      if ((yi > y) != (yj > y)) and x < (xj-xi)*(y-yi)/(yj-yi+1e-12)+xi:
+                          c = not c
+                      j = i
+                  return c
+              A = [(96,35),(148,155),(124,155),(113,126),(79,126),(68,155),(44,155)]
+              hole = [(96,76),(105,106),(87,106)]
+              for y in range(size):
+                  row = bytearray([0])
+                  for x in range(size):
+                      # Rounded blue app-icon tile with a white letter A.
+                      edge = min(x,y,size-1-x,size-1-y)
+                      corner_ok = True
+                      if edge < 24:
+                          cx = 24 if x < 24 else 167
+                          cy = 24 if y < 24 else 167
+                          corner_ok = (x-cx)**2 + (y-cy)**2 <= 24**2
+                      if not corner_ok:
+                          rgba = (0,0,0,0)
+                      elif inside(A,x,y) and not inside(hole,x,y):
+                          rgba = (255,255,255,255)
+                      else:
+                          rgba = (53,108,246,255)
+                      row.extend(rgba)
+                  rows.append(bytes(row))
+              raw = b"".join(rows)
+              def chunk(kind, data):
+                  return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data)&0xffffffff)
+              data = b"\x89PNG\r\n\x1a\n"
+              data += chunk(b"IHDR",struct.pack(">2I5B",size,size,8,6,0,0,0))
+              data += chunk(b"IDAT",zlib.compress(raw,9))+chunk(b"IEND",b"")
+              path.parent.mkdir(parents=True,exist_ok=True)
+              path.write_bytes(data)
+          res = Path("app/src/main/res")
+          for name in sorted(names):
+              found = any(p.is_file() for p in res.glob("mipmap*/"+name+".*"))
+              if not found:
+                  target = res/"mipmap-mdpi"/(name+".png")
+                  png(target)
+                  print("Generated fallback launcher resource:", target)
+          PY
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
