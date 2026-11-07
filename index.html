@@ -1290,7 +1290,7 @@ async function createProject(){
  finally{btn.disabled=false;btn.textContent="✦ Create Project";}
 }
 async function loadStudioProjects(){
- try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:p.latest_build_status||"Source saved",buildId:p.latest_build_id,latest_build_id:p.latest_build_id,latest_build_status:p.latest_build_status,date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
+ try{const d=await studioApi("/projects");projects=(d.projects||[]).map(p=>({id:p.id,name:p.name,pkg:p.package_name,desc:p.description,tech:p.technology,build:p.build_type,status:p.latest_build_status||"Source saved",buildId:(JSON.parse(localStorage.getItem("asb_builds")||"{}")[p.id]||p.latest_build_id),latest_build_id:p.latest_build_id,latest_build_status:p.latest_build_status,date:new Date(p.created_at).toLocaleString(),targetSdk:p.target_sdk,minSdk:p.min_sdk}));render();}
  catch(e){addLog("Neon project list unavailable: "+e.message,"log-error");}
 }
 async function downloadProject(id){
@@ -1299,7 +1299,7 @@ async function downloadProject(id){
 }
 async function buildProject(id,kind="debug"){
  if(!confirm("Start "+kind.toUpperCase()+" APK build?"))return;showPage("logs");addLog("Starting "+kind+" APK build.");
- try{const d=await studioApi("/builds",{method:"POST",body:JSON.stringify({projectId:id,buildType:kind})});const bid=d.build.id;addLog("Build queued: "+bid);
+ try{const d=await studioApi("/builds",{method:"POST",body:JSON.stringify({projectId:id,buildType:kind})});const bid=d.build.id;const buildMap=JSON.parse(localStorage.getItem("asb_builds")||"{}");buildMap[id]=bid;localStorage.setItem("asb_builds",JSON.stringify(buildMap));const projectCard=projects.find(p=>p.id===id);if(projectCard)projectCard.buildId=bid;addLog("Build queued: "+bid);
   for(let i=0;i<180;i++){await new Promise(r=>setTimeout(r,5000));const s=await studioApi("/builds/"+bid),b=s.build;if(b.logs){$("logConsole").textContent="[Build "+b.status+"]\n"+b.logs;}
    if(["succeeded","failed","cancelled"].includes(b.status)){addLog("Build "+b.status,b.status==="succeeded"?"":"log-error");if(b.status==="succeeded")alert("APK build completed. Tap Download APK on the project card.");else alert("APK build failed. Check Build Logs.");await loadStudioProjects();return;}}
   addLog("Build is still running. Check Build Logs again.");
