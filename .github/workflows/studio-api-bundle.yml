@@ -1,0 +1,33 @@
+name: Package Neon Function
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/studio-api-bundle.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install --no-audit --no-fund
+      - name: Bundle Neon Function
+        run: |
+          mkdir -p dist
+          npx --yes esbuild backend/index.mjs --bundle --platform=node --format=esm --packages=bundle --outfile=dist/index.mjs
+          cd dist
+          zip -9 ../studiobuildapi.zip index.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-function-bundle
+          path: studiobuildapi.zip
+          retention-days: 2
