@@ -47,15 +47,31 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      - name: Configure Android dependency repositories
+        run: |
+          cat > /tmp/studio-repositories.init.gradle <<'GRADLE'
+          settingsEvaluated { settings ->
+            settings.dependencyResolutionManagement.repositories {
+              google()
+              mavenCentral()
+            }
+          }
+          allprojects {
+            repositories {
+              google()
+              mavenCentral()
+            }
+          }
+          GRADLE
       - name: Compile APK
         id: compile
         shell: bash
         run: |
           set +e
           if [ "$BUILD_TYPE" = "release" ]; then
-            gradle --no-daemon assembleRelease 2>&1 | tee /tmp/build.log
+            gradle --init-script /tmp/studio-repositories.init.gradle --no-daemon assembleRelease 2>&1 | tee /tmp/build.log
           else
-            gradle --no-daemon assembleDebug 2>&1 | tee /tmp/build.log
+            gradle --init-script /tmp/studio-repositories.init.gradle --no-daemon assembleDebug 2>&1 | tee /tmp/build.log
           fi
           code=${PIPESTATUS[0]}
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
