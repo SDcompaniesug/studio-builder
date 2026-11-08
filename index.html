@@ -1243,13 +1243,11 @@ ${editRules}`;
  const required=["settings.gradle","settings.gradle.kts"];
  if(!files.some(f=>required.includes(f.path))||!files.some(f=>["app/build.gradle","app/build.gradle.kts"].includes(f.path))||!files.some(f=>f.path==="app/src/main/AndroidManifest.xml"))throw new Error("Generated project is incomplete: Gradle settings, app Gradle file and AndroidManifest.xml are required.");
  const manifest=files.find(f=>f.path==="app/src/main/AndroidManifest.xml").content;
- const gradle=files.filter(f=>/^app\\/build\\.gradle(?:\\.kts)?$/.test(f.path)).map(f=>f.content).join("\\n");
+ const gradle=files.filter(f=>f.path==="app/build.gradle"||f.path==="app/build.gradle.kts").map(f=>f.content).join("\n");
  const packageInGradle=gradle.includes(project.packageName);
- const packageInSources=files.some(f=>/\\.(?:java|kt)$/.test(f.path)&&new RegExp("package\\\\s+"+project.packageName.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\ const manifest=files.find(f=>f.path==="app/src/main/AndroidManifest.xml").content;
- if(!manifest.includes(project.packageName))throw new Error("Generated manifest does not match the selected package name. Please retry generation.");")+"\\\\s*;?").test(f.content));
+ const packageInSources=files.some(f=>/\.(java|kt)$/.test(f.path)&&f.content.split(/\r?\n/).some(line=>line.trim()==="package "+project.packageName+";"||line.trim()==="package "+project.packageName));
  const packageInManifest=manifest.includes(project.packageName);
  if(!packageInGradle&&!packageInSources&&!packageInManifest)throw new Error("Generated project did not use your exact package name. Please retry generation.");
- if(packageInManifest&&!manifest.includes(project.packageName))throw new Error("Generated manifest package does not match your selected package name.");
  return files;
 }
 async function createProject(){
