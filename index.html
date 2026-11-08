@@ -1254,7 +1254,7 @@ async function createProject(){
  const chosenPackage=$("packageName").value.trim();
  if(!chosenPackage){alert("Enter the Android package name you want to use. Any valid package name is accepted.");$("packageName").focus();return;}
  const project={name:chosenName||description.split(/[.!?\\n]/)[0].trim().slice(0,48)||"My Android App",packageName:chosenPackage,description,technology:selectedTech,minSdk:Number($("minSdk").value)||24,targetSdk:Number($("targetSdk").value)||35,buildType:selectedBuild};
- if(!/^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(project.packageName)){alert("Enter a valid Android package name using two or more dot-separated Java identifiers. Any prefix is allowed, including ug., org., io., app., net., or com.");$("packageName").focus();return;}
+ if(!/^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(project.packageName)){alert("Invalid Android package name. Enter the package name you want to use. Any valid Android package identifier is accepted; no specific prefix is required.");$("packageName").focus();return;}
  const btn=$("createProjectBtn");btn.disabled=true;btn.textContent="AI designing...";
  showPage("logs");$("logConsole").textContent="";addLog("Starting AI project design and source generation.");addLog("App name: "+project.name+" | Package: "+project.packageName);addLog("Selected stack: "+project.technology);
  try{
