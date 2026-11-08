@@ -1212,7 +1212,7 @@ MANDATORY ENGINEERING RULES:
 - Use Android Gradle Plugin 8.7.3, Gradle 8.9 compatible configuration, JDK 17.
 - Respect the selected stack exactly. Java/Java + XML means Java and XML only, no Kotlin and no Compose. Kotlin + XML means Kotlin and XML, no Compose. Flutter/React Native/WebView must include the correct complete project structure and dependencies.
 - Include settings.gradle, root build.gradle, gradle.properties, app/build.gradle, app/src/main/AndroidManifest.xml, all source/resource files and README.md.
-- Use consistent package declarations, paths, activity names, manifest registrations, resource IDs, themes and dependencies.
+- The PACKAGE supplied by the user is authoritative and MUST be used exactly as entered. Never substitute, prepend, append, normalize, or hardcode another package name (including any default vendor prefix). Set the Gradle namespace and applicationId to this exact value, use it in every Java/Kotlin package declaration and source folder path, and keep manifest/component references consistent. Do not invent a different package.
 - Every referenced drawable, mipmap, string, color, style, layout and menu resource must exist. Do not use nonexistent resources or Android APIs newer than minSdk without version guards.
 - Add all required permissions and dependencies. Do not use obsolete or incompatible APIs. Avoid duplicate classes/dependencies and unresolved imports.
 - Implement every requested screen and primary interaction. No TODOs, stubs, fake buttons, pseudocode or placeholder pages. Add sensible loading, empty, error and permission states.
@@ -1243,10 +1243,15 @@ ${editRules}`;
  const required=["settings.gradle","settings.gradle.kts"];
  if(!files.some(f=>required.includes(f.path))||!files.some(f=>["app/build.gradle","app/build.gradle.kts"].includes(f.path))||!files.some(f=>f.path==="app/src/main/AndroidManifest.xml"))throw new Error("Generated project is incomplete: Gradle settings, app Gradle file and AndroidManifest.xml are required.");
  const manifest=files.find(f=>f.path==="app/src/main/AndroidManifest.xml").content;
- if(!manifest.includes(project.packageName))throw new Error("Generated manifest does not match the selected package name. Please retry generation.");
+ const gradle=files.filter(f=>/^app\\/build\\.gradle(?:\\.kts)?$/.test(f.path)).map(f=>f.content).join("\\n");
+ const packageInGradle=gradle.includes(project.packageName);
+ const packageInSources=files.some(f=>/\\.(?:java|kt)$/.test(f.path)&&new RegExp("package\\\\s+"+project.packageName.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\ const manifest=files.find(f=>f.path==="app/src/main/AndroidManifest.xml").content;
+ if(!manifest.includes(project.packageName))throw new Error("Generated manifest does not match the selected package name. Please retry generation.");")+"\\\\s*;?").test(f.content));
+ const packageInManifest=manifest.includes(project.packageName);
+ if(!packageInGradle&&!packageInSources&&!packageInManifest)throw new Error("Generated project did not use your exact package name. Please retry generation.");
+ if(packageInManifest&&!manifest.includes(project.packageName))throw new Error("Generated manifest package does not match your selected package name.");
  return files;
 }
-function slugPackage(name){const parts=String(name||"myapp").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(/\\s+/).filter(Boolean);const app=parts.pop()||"myapp";const org=parts.join("")||"studio";return "com."+org.replace(/^[^a-z]/,"app")+"."+app.replace(/^[^a-z]/,"app");}
 async function createProject(){
  const description=$("appDescription").value.trim();
  if(!description){alert("Describe the app idea or features first.");$("appDescription").focus();return;}
