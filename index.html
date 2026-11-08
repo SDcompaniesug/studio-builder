@@ -590,62 +590,7 @@ b.classList.toggle("selected",i===0);
 });
 }
 
-function createProject(){
-const name=$("appName").value.trim();
-const pkg=$("packageName").value.trim();
-const desc=$("appDescription").value.trim();
-
-if(!name||!pkg||!desc){
-alert("Please enter the app name, package name and description.");
-return;
-}
-
-if(!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(pkg)){
-alert("Enter a valid package name, for example com.example.myapp.");
-return;
-}
-
-const provider=localStorage.getItem("asb_provider")||"";
-const key=localStorage.getItem("asb_apiKey")||"";
-const token=localStorage.getItem("asb_githubToken")||"";
-
-if(!provider||!key){
-alert("Please configure an AI provider and API key in Settings first.");
-showPage("settings");
-return;
-}
-
-if(!token){
-alert("Please configure your GitHub token in Settings first.");
-showPage("settings");
-return;
-}
-
-const project={
-id:Date.now(),
-name,pkg,desc,
-tech:selectedTech,
-build:selectedBuild,
-minSdk:$("minSdk").value,
-targetSdk:$("targetSdk").value,
-status:"Not built",
-date:new Date().toLocaleString()
-};
-
-projects.unshift(project);
-saveProjects();
-render();
-
-addLog("Project created: "+name);
-addLog("Technology: "+selectedTech+" | Build: "+selectedBuild);
-addLog("Project configuration saved locally.");
-addLog("A backend and GitHub Actions workflow are required for a real APK build.","log-error");
-
-alert("Project saved. This HTML prototype does not compile APKs by itself. A backend is required to generate source code and trigger GitHub Actions.");
-
-showPage("logs");
-}
-
+/* Legacy local-only project creation removed. The active AI-backed createProject() is defined below. */
 function render(){
 $("totalProjects").textContent=projects.length;
 $("totalBuilds").textContent=projects.filter(p=>p.status!=="Not built").length;
