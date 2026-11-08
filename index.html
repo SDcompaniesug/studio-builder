@@ -223,7 +223,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 
 <div class="field">
 <label>PACKAGE NAME</label>
-<input id="packageName" placeholder="Optional — AI can generate a valid package">
+<input id="packageName" placeholder="Optional — e.g. ug.myapp, org.studio.player, io.example.app">
 </div>
 
 <div class="field full">
@@ -1308,7 +1308,7 @@ async function createProject(){
  const inferredName=$("appName").value.trim()||description.split(/[.!?\\n]/)[0].trim().slice(0,48)||"My Android App";
  const inferredPackage=$("packageName").value.trim()||slugPackage(inferredName);
  const project={name:inferredName,packageName:inferredPackage,description,technology:selectedTech,minSdk:Number($("minSdk").value)||24,targetSdk:Number($("targetSdk").value)||35,buildType:selectedBuild};
- if(!/^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(project.packageName)){alert("The package name is invalid. Leave it blank and AI will choose a valid one, or enter a valid name such as com.example.myapp.");return;}
+ if(!/^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(project.packageName)){alert("Enter a valid Android package with two or more dot-separated identifiers. Any prefix is allowed — it does not have to start with com. Examples: ug.myapp, org.studio.player, io.example.app. Leave it blank for AI to choose.");return;}
  const btn=$("createProjectBtn");btn.disabled=true;btn.textContent="AI designing...";
  showPage("logs");$("logConsole").textContent="";addLog("Starting AI project design and source generation.");addLog("App name: "+project.name+" | Package: "+project.packageName);addLog("Selected stack: "+project.technology);
  try{
