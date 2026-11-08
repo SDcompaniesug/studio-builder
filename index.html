@@ -223,13 +223,13 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 
 <div class="field">
 <label>PACKAGE NAME</label>
-<input id="packageName" placeholder="Optional — e.g. ug.myapp, org.studio.player, io.example.app">
+<input id="packageName" placeholder="Enter your package name, e.g. ug.myapp or org.studio.player">
 </div>
 
 <div class="field full">
 <label>DESCRIBE YOUR APPLICATION</label>
 <textarea id="appDescription" placeholder="Describe the app you want to create, its features, pages, design and functionality..."></textarea>
-<div class="hint">Describe the app idea and features. App name and package name are optional — AI can infer them.</div>
+<div class="hint">Enter the package name you want to use. Any valid Java-style package prefix is accepted; it does not have to start with com. App name may be left blank.</div>
 </div>
 
 <div class="field full">
@@ -1249,11 +1249,12 @@ ${editRules}`;
 function slugPackage(name){const parts=String(name||"myapp").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(/\\s+/).filter(Boolean);const app=parts.pop()||"myapp";const org=parts.join("")||"studio";return "com."+org.replace(/^[^a-z]/,"app")+"."+app.replace(/^[^a-z]/,"app");}
 async function createProject(){
  const description=$("appDescription").value.trim();
- if(!description){alert("Describe the app idea or features first. The AI can automatically choose the app name and package name.");$("appDescription").focus();return;}
- const inferredName=$("appName").value.trim()||description.split(/[.!?\\n]/)[0].trim().slice(0,48)||"My Android App";
- const inferredPackage=$("packageName").value.trim()||slugPackage(inferredName);
- const project={name:inferredName,packageName:inferredPackage,description,technology:selectedTech,minSdk:Number($("minSdk").value)||24,targetSdk:Number($("targetSdk").value)||35,buildType:selectedBuild};
- if(!/^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(project.packageName)){alert("Enter a valid Android package with two or more dot-separated identifiers. Any prefix is allowed — it does not have to start with com. Examples: ug.myapp, org.studio.player, io.example.app. Leave it blank for AI to choose.");return;}
+ if(!description){alert("Describe the app idea or features first.");$("appDescription").focus();return;}
+ const chosenName=$("appName").value.trim();
+ const chosenPackage=$("packageName").value.trim();
+ if(!chosenPackage){alert("Enter the Android package name you want to use. You can choose any valid package name; it does not have to start with com.");$("packageName").focus();return;}
+ const project={name:chosenName||description.split(/[.!?\\n]/)[0].trim().slice(0,48)||"My Android App",packageName:chosenPackage,description,technology:selectedTech,minSdk:Number($("minSdk").value)||24,targetSdk:Number($("targetSdk").value)||35,buildType:selectedBuild};
+ if(!/^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(project.packageName)){alert("Enter a valid Android package name using two or more dot-separated Java identifiers. Any prefix is allowed, including ug., org., io., app., net., or com.");$("packageName").focus();return;}
  const btn=$("createProjectBtn");btn.disabled=true;btn.textContent="AI designing...";
  showPage("logs");$("logConsole").textContent="";addLog("Starting AI project design and source generation.");addLog("App name: "+project.name+" | Package: "+project.packageName);addLog("Selected stack: "+project.technology);
  try{
